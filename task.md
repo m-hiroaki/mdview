@@ -65,12 +65,20 @@
 
 ### Phase 3 — Domain / Application の基礎
 
-- [ ] Markdown ドキュメント、タブ、表示状態など、必要な最小限のモデルを定義する。
-- [ ] ファイル読込など必要な Application 抽象化を定義し、Infrastructure 側で実装する。
-- [ ] Domain と Application のルールを Avalonia 非依存でテストする。
-- [ ] 不要な Interface、Factory、Service、DI 登録を増やさない。
+- [x] Markdown ドキュメント、タブ、表示状態など、必要な最小限のモデルを定義する。
+- [x] ファイル読込など必要な Application 抽象化を定義し、Infrastructure 側で実装する。
+- [x] Domain と Application のルールを Avalonia 非依存でテストする。
+- [x] 不要な Interface、Factory、Service、DI 登録を増やさない。
 
 **完了条件:** コアロジックを UI 起動なしでテストでき、依存方向が維持されている。
+
+**実施結果（2026-09-27）:**
+
+- Domain に不変の `MarkdownDocument`（ファイルパスと本文）を追加した。ファイルシステムや Avalonia には依存せず、空のパスと null 本文を拒否する。
+- Application に `IMarkdownFileReader` と `MarkdownDocumentLoader` を追加し、読込処理を Infrastructure に委譲する。読込失敗はここで握りつぶさず、後続のタブ表示層で個別に扱えるよう呼び出し元へ返す。
+- Infrastructure の `MarkdownFileReader` は .NET 標準 API のみで UTF-8 / UTF-8 BOM を読み、不正 UTF-8 は例外として返す。追加 NuGet はない。
+- Domain / Application のルールに加え、UTF-8 読込をテストし、Avalonia を起動せずに Release Build と全11テストが成功した。
+- Tab / 表示状態のモデルと重複検出は、仕様が具体化する Phase 6 で実装する。現段階で先行して抽象化しない。
 
 ### Phase 4 — Markdown Parser と Document Model
 

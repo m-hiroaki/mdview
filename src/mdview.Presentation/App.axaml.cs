@@ -4,20 +4,20 @@ using Avalonia.Markup.Xaml;
 
 namespace mdview.Presentation;
 
-public partial class App : Application
+public partial class App : Avalonia.Application
 {
-    public override void Initialize()
+  public override void Initialize()
+  {
+    AvaloniaXamlLoader.Load(this);
+  }
+
+  public override void OnFrameworkInitializationCompleted()
+  {
+    if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
     {
-        AvaloniaXamlLoader.Load(this);
+      desktop.MainWindow = new MainWindow();
     }
 
-    public override void OnFrameworkInitializationCompleted()
-    {
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-        {
-            desktop.MainWindow = new MainWindow();
-        }
-
-        base.OnFrameworkInitializationCompleted();
-    }
+    base.OnFrameworkInitializationCompleted();
+  }
 }
