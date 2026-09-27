@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using mdview.Application.Abstractions;
 using mdview.Application.Models;
 using mdview.Application.UseCases;
 using mdview.Infrastructure.FileSystem;
@@ -12,6 +13,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
   private readonly MarkdownTabManager _tabManager = new();
   private readonly MarkdownFileReader _fileReader = new();
   private readonly MarkdigMarkdownParser _parser = new();
+  private readonly Dictionary<string, IMarkdownFileWatcher> _watchers = new(StringComparer.OrdinalIgnoreCase);
   private MarkdownDocumentModel _activeDocument = new(Array.Empty<MarkdownBlock>());
   private DocumentTabViewModel? _activeTab;
 
@@ -61,34 +63,40 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
       var content = await _fileReader.ReadTextAsync(fullPath);
       var document = _parser.Parse(content);
-      OpenOrActivateDocument(fullPath, Path.GetFileName(fullPath), document);
+      OpenOrActivateDocument(fullPath, Path.GetFileName(fullPath), document, content, DocumentTabState.Loaded);
+      StartWatching(fullPath);
     }
     catch (Exception ex)
     {
-      var errorDocument = new MarkdownDocumentModel([
-        new MarkdownParagraphBlock([
-          new MarkdownTextInline($"File could not be opened: {ex.Message}")
-        ])
-      ]);
-
-      OpenOrActivateDocument(fullPath, Path.GetFileName(fullPath), errorDocument);
+      OpenOrActivateDocument(fullPath, Path.GetFileName(fullPath), CreateErrorDocument($"File could not be opened: {ex.Message}"), null, File.Exists(fullPath) ? DocumentTabState.Error : DocumentTabState.Missing);
+      StartWatching(fullPath);
     }
   }
 
-  public void OpenOrActivateDocument(string filePath, string? title, MarkdownDocumentModel document)
+  public async Task ReloadActiveFileAsync()
+  {
+    if (ActiveTab is not null)
+    {
+      await ReloadFileAsync(ActiveTab.FilePath);
+    }
+  }
+
+  public void OpenOrActivateDocument(string filePath, string? title, MarkdownDocumentModel document, string? sourceContent = null, DocumentTabState state = DocumentTabState.Loaded)
   {
     var tab = _tabManager.OpenOrActivate(filePath, title, document);
     var existing = Tabs.FirstOrDefault(candidate => string.Equals(candidate.FilePath, tab.FilePath, StringComparison.OrdinalIgnoreCase));
 
     if (existing is null)
     {
-      existing = new DocumentTabViewModel(tab.FilePath, tab.Title, tab.Document);
+      existing = new DocumentTabViewModel(tab.FilePath, tab.Title, tab.Document, sourceContent, state);
       Tabs.Add(existing);
     }
     else
     {
       existing.Title = tab.Title;
       existing.Document = tab.Document;
+      existing.SourceContent = sourceContent;
+      existing.State = state;
     }
 
     ActiveTab = existing;
@@ -112,6 +120,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     _tabManager.CloseTab(match);
+    StopWatching(tab.FilePath);
     Tabs.Remove(tab);
 
     if (Tabs.Count == 0)
@@ -124,6 +133,81 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     ActiveTab = active;
   }
 
+  private void StartWatching(string path)
+  {
+    if (_watchers.ContainsKey(path))
+    {
+      return;
+    }
+
+    var watcher = new MarkdownFileWatcher(path);
+    watcher.Changed += OnFileChanged;
+    watcher.Start();
+    _watchers[path] = watcher;
+  }
+
+  private void StopWatching(string path)
+  {
+    if (!_watchers.Remove(path, out var watcher))
+    {
+      return;
+    }
+
+    watcher.Changed -= OnFileChanged;
+    watcher.Dispose();
+  }
+
+  private void OnFileChanged(object? sender, MarkdownFileChangedEventArgs e)
+  {
+    _ = ReloadFileAsync(e.Path);
+  }
+
+  private async Task ReloadFileAsync(string path)
+  {
+    var tab = Tabs.FirstOrDefault(candidate => string.Equals(candidate.FilePath, path, StringComparison.OrdinalIgnoreCase));
+    if (tab is null)
+    {
+      return;
+    }
+
+    if (!File.Exists(path))
+    {
+      tab.Document = CreateErrorDocument("File not found.");
+      tab.SourceContent = null;
+      tab.State = DocumentTabState.Missing;
+      return;
+    }
+
+    try
+    {
+      var content = await _fileReader.ReadTextAsync(path);
+      if (tab.State == DocumentTabState.Loaded && string.Equals(tab.SourceContent, content, StringComparison.Ordinal))
+      {
+        return;
+      }
+
+      tab.Document = _parser.Parse(content);
+      tab.SourceContent = content;
+      tab.State = DocumentTabState.Loaded;
+      if (ReferenceEquals(ActiveTab, tab))
+      {
+        ActiveDocument = tab.Document;
+      }
+    }
+    catch (Exception ex)
+    {
+      tab.Document = CreateErrorDocument($"File could not be opened: {ex.Message}");
+      tab.SourceContent = null;
+      tab.State = DocumentTabState.Error;
+    }
+  }
+
+  private static MarkdownDocumentModel CreateErrorDocument(string message) => new([
+    new MarkdownParagraphBlock([
+      new MarkdownTextInline(message)
+    ])
+  ]);
+
   public event PropertyChangedEventHandler? PropertyChanged;
 }
 
@@ -131,12 +215,16 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
 {
   private string _title;
   private MarkdownDocumentModel _document;
+  private string? _sourceContent;
+  private DocumentTabState _state;
 
-  public DocumentTabViewModel(string filePath, string title, MarkdownDocumentModel document)
+  public DocumentTabViewModel(string filePath, string title, MarkdownDocumentModel document, string? sourceContent = null, DocumentTabState state = DocumentTabState.Loaded)
   {
     FilePath = filePath;
     _title = title;
     _document = document;
+    _sourceContent = sourceContent;
+    _state = state;
   }
 
   public string FilePath { get; }
@@ -171,5 +259,33 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     }
   }
 
+  public string? SourceContent
+  {
+    get => _sourceContent;
+    set => _sourceContent = value;
+  }
+
+  public DocumentTabState State
+  {
+    get => _state;
+    set
+    {
+      if (_state == value)
+      {
+        return;
+      }
+
+      _state = value;
+      PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(State)));
+    }
+  }
+
   public event PropertyChangedEventHandler? PropertyChanged;
+}
+
+public enum DocumentTabState
+{
+  Loaded,
+  Missing,
+  Error
 }

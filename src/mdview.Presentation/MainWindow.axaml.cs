@@ -92,6 +92,17 @@ public partial class MainWindow : Window
 
     private async void OnKeyDown(object? sender, KeyEventArgs e)
     {
+        if (e.Key == Key.R && (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta)))
+        {
+            e.Handled = true;
+            if (DataContext is MainWindowViewModel viewModel)
+            {
+                await viewModel.ReloadActiveFileAsync();
+            }
+
+            return;
+        }
+
         if ((e.Key == Key.O && (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta)))
             || (e.Key == Key.O && e.KeyModifiers == KeyModifiers.Meta))
         {

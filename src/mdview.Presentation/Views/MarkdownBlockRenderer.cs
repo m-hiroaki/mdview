@@ -4,6 +4,7 @@ using Avalonia.Controls.Documents;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using mdview.Application.Models;
 using System.Text;
 
@@ -235,14 +236,7 @@ internal static class MarkdownBlockRenderer
         TextWrapping = TextWrapping.Wrap
       },
       MarkdownLinkInline link => CreateLinkButton(link, currentMarkdownPath, fontSize, fontWeight),
-      MarkdownImageInline image => new TextBlock
-      {
-        Text = string.IsNullOrWhiteSpace(image.AltText) ? "[image]" : image.AltText,
-        FontSize = fontSize,
-        FontStyle = FontStyle.Italic,
-        Foreground = LinkForeground,
-        TextWrapping = TextWrapping.Wrap
-      },
+      MarkdownImageInline image => CreateImageControl(image, currentMarkdownPath, fontSize),
       MarkdownBreakInline => new TextBlock { Text = " ", FontSize = fontSize },
       MarkdownTaskListInline task => new TextBlock
       {
@@ -339,6 +333,40 @@ internal static class MarkdownBlockRenderer
     button.Click += (_, _) => MarkdownLinkHandler.Open(currentMarkdownPath, link.Destination);
     return button;
   }
+
+  private static Control CreateImageControl(MarkdownImageInline image, string? currentMarkdownPath, double fontSize)
+  {
+    var path = MarkdownLinkHandler.ResolveImagePath(currentMarkdownPath, image.Destination);
+    if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+    {
+      return CreateUnavailableImageText(image, fontSize);
+    }
+
+    try
+    {
+      return new Image
+      {
+        Source = new Bitmap(path),
+        MaxHeight = 600,
+        Stretch = Stretch.Uniform,
+        HorizontalAlignment = HorizontalAlignment.Left,
+        Margin = new Thickness(0, 4, 0, 10)
+      };
+    }
+    catch (Exception)
+    {
+      return CreateUnavailableImageText(image, fontSize);
+    }
+  }
+
+  private static TextBlock CreateUnavailableImageText(MarkdownImageInline image, double fontSize) => new()
+  {
+    Text = $"[Image unavailable: {image.AltText}]",
+    FontSize = fontSize,
+    FontStyle = FontStyle.Italic,
+    Foreground = LinkForeground,
+    TextWrapping = TextWrapping.Wrap
+  };
 
   private static TextBlock RenderText(string value, FontFamily? fontFamily = null)
   {

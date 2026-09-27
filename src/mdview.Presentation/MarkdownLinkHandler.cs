@@ -9,22 +9,15 @@ namespace mdview.Presentation;
 public static class MarkdownLinkHandler
 {
   private static readonly MarkdownPathResolver PathResolver = new();
-  private static string? CurrentDocumentPath { get; set; }
 
-  public static void SetCurrentDocumentPath(string? path)
-  {
-    CurrentDocumentPath = path;
-  }
-
-  public static string ResolveDocumentPath(string destination, string? currentMarkdownPath = null)
+  public static string ResolveDocumentPath(string destination, string? currentMarkdownPath)
   {
     if (string.IsNullOrWhiteSpace(destination))
     {
       return string.Empty;
     }
 
-    var effectivePath = currentMarkdownPath ?? CurrentDocumentPath;
-    if (string.IsNullOrWhiteSpace(effectivePath))
+    if (string.IsNullOrWhiteSpace(currentMarkdownPath))
     {
       return destination;
     }
@@ -40,7 +33,7 @@ public static class MarkdownLinkHandler
       return destination;
     }
 
-    return PathResolver.ResolveDocumentLink(effectivePath, destination);
+    return PathResolver.ResolveDocumentLink(currentMarkdownPath, destination);
   }
 
   public static void Open(string? currentMarkdownPath, string destination)
