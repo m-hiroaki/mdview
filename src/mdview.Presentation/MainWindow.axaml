@@ -11,20 +11,23 @@
                 Padding="8,0"
                 BorderBrush="#333333"
                 BorderThickness="0,0,0,1">
-            <ItemsControl ItemsSource="{Binding Tabs}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal" />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
+            <TabControl ItemsSource="{Binding Tabs}"
+                        SelectedItem="{Binding ActiveTab, Mode=TwoWay}">
+                <TabControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:DocumentTabViewModel">
-                        <Border Padding="12,8" Margin="2,2,0,0" CornerRadius="6,6,0,0">
-                            <TextBlock Text="{Binding Title}" />
-                        </Border>
+                        <Grid ColumnDefinitions="*,Auto" MinWidth="120">
+                            <TextBlock VerticalAlignment="Center" Text="{Binding Title}" />
+                            <Button Grid.Column="1"
+                                    Width="20"
+                                    Height="20"
+                                    Margin="8,0,0,0"
+                                    Content="×"
+                                    Tag="{Binding}"
+                                    Click="OnCloseTabClick" />
+                        </Grid>
                     </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                </TabControl.ItemTemplate>
+            </TabControl>
         </Border>
         <ScrollViewer Grid.Row="1">
             <ItemsControl ItemsSource="{Binding ActiveDocument.Blocks}" Margin="18,12,18,20">
