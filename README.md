@@ -122,6 +122,22 @@ Windows PowerShell では次のように指定します。
 .\scripts\publish.ps1 win-x64 artifacts\aot -Aot
 ```
 
+### Windows ARM64 Native AOT の前提条件
+
+Windows ARM64 の Native AOT では、.NET SDK だけでなく Visual Studio 2022 または Visual Studio Build Tools の C++ toolchain が必要です。次のコンポーネントをインストールしてください。
+
+- Desktop development with C++ または C++ Build Tools workload
+- MSVC v143 の ARM64 / ARM64EC build tools
+- Windows SDK
+
+Visual Studio Installer で ARM64 用の C++ build tools を選択した後、Developer PowerShell または Developer Command Prompt から次を実行します。
+
+```powershell
+.\scripts\publish.ps1 win-arm64 artifacts\aot -Aot
+```
+
+`Platform linker not found` が表示される場合は、`microsoft.dotnet.ilcompiler` の問題ではなく、`link.exe` と ARM64 用 MSVC linker が見つかっていない状態です。通常の PowerShell ではなく、Visual Studio の Developer PowerShell で実行してください。CI の `windows-latest` runner には通常この toolchain が用意されています。
+
 ## 主な依存関係
 
 - [Avalonia](https://github.com/AvaloniaUI/Avalonia): Windows / macOS 対応のネイティブ UI（MIT）

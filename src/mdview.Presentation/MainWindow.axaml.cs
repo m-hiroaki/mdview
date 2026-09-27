@@ -10,6 +10,11 @@ namespace mdview.Presentation;
 
 public partial class MainWindow : Window
 {
+    public MainWindow()
+        : this(null)
+    {
+    }
+
     public MainWindow(IEnumerable<string>? startupPaths = null)
     {
         InitializeComponent();
