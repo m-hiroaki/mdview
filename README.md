@@ -42,6 +42,22 @@ dotnet run --project src/mdview.Presentation/mdview.Presentation.csproj
 
 起動時引数、`Ctrl/Cmd + O`、およびアプリ内のファイル選択から Markdown ファイルを開けます。
 
+### Windows の開発ツール一括セットアップ
+
+Windows では、管理者権限が必要になる場合がある PowerShell から次を実行します。Windows App Installer に含まれる `winget` を使用して、.NET SDK、Git、Visual Studio C++ Build Tools、ARM64 toolchain、Windows SDK をインストールし、NuGet restore まで実行します。
+
+```powershell
+.\scripts\setup-windows.ps1
+```
+
+NuGet restore を省略する場合:
+
+```powershell
+.\scripts\setup-windows.ps1 -SkipRestore
+```
+
+Native AOT を使わない通常のビルドだけであれば C++ toolchain は必須ではありませんが、`win-arm64` の Native AOT publish には必要です。スクリプトはリポジトリの `global.json` にある SDK バージョンも確認します。
+
 ## テスト
 
 すべてのテストを実行します。テスト時の .NET CLI / Microsoft Testing Platform のテレメトリを無効にする例です。
