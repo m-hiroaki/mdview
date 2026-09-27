@@ -8,38 +8,42 @@ public class MarkdownPathResolverTests
   public void ResolveDocumentLink_UsesCurrentMarkdownFolderForRelativePaths()
   {
     var resolver = new MarkdownPathResolver();
+    var currentMarkdownPath = Path.Combine(Path.GetTempPath(), "mdview", "docs", "guide.md");
 
-    var resolved = resolver.ResolveDocumentLink("/Users/example/docs/guide.md", "../README.md");
+    var resolved = resolver.ResolveDocumentLink(currentMarkdownPath, "../README.md");
 
-    Assert.Equal("/Users/example/README.md", resolved);
+    Assert.Equal(Path.Combine(Path.GetTempPath(), "mdview", "README.md"), resolved);
   }
 
   [Fact]
   public void ResolveImagePath_UsesCurrentMarkdownFolderForRelativeImages()
   {
     var resolver = new MarkdownPathResolver();
+    var currentMarkdownPath = Path.Combine(Path.GetTempPath(), "mdview", "docs", "guide.md");
 
-    var resolved = resolver.ResolveImagePath("/Users/example/docs/guide.md", "images/diagram.png");
+    var resolved = resolver.ResolveImagePath(currentMarkdownPath, "images/diagram.png");
 
-    Assert.Equal("/Users/example/docs/images/diagram.png", resolved);
+    Assert.Equal(Path.Combine(Path.GetTempPath(), "mdview", "docs", "images", "diagram.png"), resolved);
   }
 
   [Fact]
   public void ResolveDocumentLink_PreservesFragmentWhenResolvingRelativeMarkdownFiles()
   {
     var resolver = new MarkdownPathResolver();
+    var currentMarkdownPath = Path.Combine(Path.GetTempPath(), "mdview", "docs", "guide.md");
 
-    var resolved = resolver.ResolveDocumentLink("/Users/example/docs/guide.md", "../README.md#start");
+    var resolved = resolver.ResolveDocumentLink(currentMarkdownPath, "../README.md#start");
 
-    Assert.Equal("/Users/example/README.md#start", resolved);
+    Assert.Equal(Path.Combine(Path.GetTempPath(), "mdview", "README.md") + "#start", resolved);
   }
 
   [Fact]
   public void ResolveDocumentLink_LeavesExternalUrlAndAnchorUnchanged()
   {
     var resolver = new MarkdownPathResolver();
+    var currentMarkdownPath = Path.Combine(Path.GetTempPath(), "mdview", "guide.md");
 
-    Assert.Equal("https://example.com", resolver.ResolveDocumentLink("/Users/example/guide.md", "https://example.com"));
-    Assert.Equal("#architecture", resolver.ResolveDocumentLink("/Users/example/guide.md", "#architecture"));
+    Assert.Equal("https://example.com", resolver.ResolveDocumentLink(currentMarkdownPath, "https://example.com"));
+    Assert.Equal("#architecture", resolver.ResolveDocumentLink(currentMarkdownPath, "#architecture"));
   }
 }
