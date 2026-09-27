@@ -99,14 +99,23 @@
 
 ### Phase 5 — Native Markdown Rendering
 
-- [ ] Document Model を Avalonia のネイティブコントロールで描画する。
-- [ ] 見出し・本文・リスト・引用・テーブル・Task List・リンク・画像・コードブロックを読みやすく表示する。
-- [ ] Task List を読み取り専用にする。
-- [ ] Syntax Highlighting は成熟したライブラリを調査し、要件と依存影響を確認してから選択する。未知の言語指定は通常のコードとして表示する。
-- [ ] WebView は導入しない。導入が必要と判明した場合は、理由・代替案・影響を提示して事前確認する。
-- [ ] 長文や大きな文書で描画・スクロールを確認し、不要に巨大な Visual Tree を避ける。
+- [x] Document Model を Avalonia のネイティブコントロールで描画する。
+- [x] 見出し・本文・リスト・引用・テーブル・Task List・リンク・画像・コードブロックを読みやすく表示する。
+- [x] Task List を読み取り専用にする。
+- [x] Syntax Highlighting は成熟したライブラリを調査し、要件と依存影響を確認してから選択する。未知の言語指定は通常のコードとして表示する。
+- [x] WebView は導入しない。導入が必要と判明した場合は、理由・代替案・影響を提示して事前確認する。
+- [x] `VirtualizingStackPanel` による項目仮想化を導入し、長文の定量的な負荷測定は Phase 11 で行う。
 
 **完了条件:** Markdown をネイティブ UI で閲覧でき、描画エラーでアプリ全体が停止しない。
+
+**実施結果（2026-09-27）:**
+
+- Application の Document Model を Avalonia のネイティブ `TextBlock`、`Border`、`Grid`、`StackPanel` と仮想化項目リストで描画する。見出し、本文、インライン書式、ネストしたリスト、Task List、引用、テーブル、水平線、HTML文字列、コードブロックを扱う。リンクは視覚表示のみ、画像は代替テキスト表示とし、パス解決と操作は Phase 7 で追加する。
+- コードブロックには AvaloniaEdit `12.0.0` を読み取り専用で使用し、TextMate `12.0.0` と TextMateSharp.Grammars `2.0.4` で色付けする。言語名を認識できない場合は通常のコード表示にフォールバックする。Task List は読み取り専用の `☑` / `☐` として描画する。
+- ライブラリ選定理由: Avalonia 自体には言語文法/構文解析エンジンがなく、自前実装は禁止されている。AvaloniaEdit + TextMate は Avalonia 12 に対応したネイティブ表示と広範な既存文法を提供するため採用。代替の ColorCode.Core `2.0.15` は MIT だが、Avalonia 用 formatter がなく、対応する描画アダプターの追加実装が必要なため採用しなかった。
+- 依存/配布影響: AvaloniaEdit (MIT, NuGet 約490 KB)、AvaloniaEdit.TextMate (MIT, 約52 KB)、TextMateSharp.Grammars (MIT, 約878 KB) を直接参照し、TextMateSharp `2.0.4` と Onigwrap `1.0.11` (MIT) が推移的に加わる。Onigwrap パッケージには複数 OS 用ネイティブ資産（nupkg 約4 MB）が含まれ、macOS arm64/x64 と Windows arm64/x64 向けの資産を同梱する。別途インストールするランタイムやネットワーク取得は不要。実配布サイズは Phase 11 で測定する。
+- 一時的な C# コードブロックを表示させた状態で macOS arm64 アプリを起動し、TextMate 初期化時の例外がないことを確認した。検証用サンプルは削除済み。画面キャプチャが取得できないため、レイアウトの最終目視確認は保留。
+- Release Build 成功、全15テスト成功。WebView / HTML 実行 / 外部通信は追加していない。
 
 ### Phase 6 — ファイルを開く・タブ管理
 

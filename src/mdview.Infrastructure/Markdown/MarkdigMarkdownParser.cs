@@ -53,31 +53,31 @@ public sealed class MarkdigMarkdownParser : IMarkdownParser
     switch (block)
     {
       case HeadingBlock heading:
-      {
-        var inlines = ConvertInlines(heading.Inline);
-        var anchor = CreateUniqueAnchor(GetPlainText(inlines), anchors);
-        return new MarkdownHeadingBlock(heading.Level, anchor, inlines);
-      }
+        {
+          var inlines = ConvertInlines(heading.Inline);
+          var anchor = CreateUniqueAnchor(GetPlainText(inlines), anchors);
+          return new MarkdownHeadingBlock(heading.Level, anchor, inlines);
+        }
       case ParagraphBlock paragraph:
         return new MarkdownParagraphBlock(ConvertInlines(paragraph.Inline));
       case FencedCodeBlock fencedCode:
-      {
-        var info = fencedCode.Info?.ToString().Trim() ?? string.Empty;
-        var language = info.Length == 0 ? null : info.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)[0];
-        return new MarkdownCodeBlock(fencedCode.Lines.ToString(), language);
-      }
+        {
+          var info = fencedCode.Info?.ToString().Trim() ?? string.Empty;
+          var language = info.Length == 0 ? null : info.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)[0];
+          return new MarkdownCodeBlock(fencedCode.Lines.ToString(), language);
+        }
       case CodeBlock code:
         return new MarkdownCodeBlock(code.Lines.ToString(), null);
       case ListBlock list:
-      {
-        var items = list.OfType<ListItemBlock>()
-          .Select(item => new MarkdownListItem(ConvertBlocks(item, anchors)))
-          .ToArray();
-        var start = list.IsOrdered && int.TryParse(list.OrderedStart?.ToString(), out var orderedStart)
-          ? orderedStart
-          : 1;
-        return new MarkdownListBlock(list.IsOrdered, start, items);
-      }
+        {
+          var items = list.OfType<ListItemBlock>()
+            .Select(item => new MarkdownListItem(ConvertBlocks(item, anchors)))
+            .ToArray();
+          var start = list.IsOrdered && int.TryParse(list.OrderedStart?.ToString(), out var orderedStart)
+            ? orderedStart
+            : 1;
+          return new MarkdownListBlock(list.IsOrdered, start, items);
+        }
       case QuoteBlock quote:
         return new MarkdownQuoteBlock(ConvertBlocks(quote, anchors));
       case Table table:
@@ -136,11 +136,11 @@ public sealed class MarkdigMarkdownParser : IMarkdownParser
           inlines.Add(ConvertEmphasis(emphasis));
           break;
         case LinkInline link when link.IsImage:
-        {
-          var children = ConvertInlines(link);
-          inlines.Add(new MarkdownImageInline(link.Url ?? string.Empty, link.Title, GetPlainText(children)));
-          break;
-        }
+          {
+            var children = ConvertInlines(link);
+            inlines.Add(new MarkdownImageInline(link.Url ?? string.Empty, link.Title, GetPlainText(children)));
+            break;
+          }
         case LinkInline link:
           inlines.Add(new MarkdownLinkInline(link.Url ?? string.Empty, link.Title, ConvertInlines(link)));
           break;

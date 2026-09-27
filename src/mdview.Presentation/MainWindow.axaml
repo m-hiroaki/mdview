@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:mdview.Presentation.ViewModels"
+        xmlns:views="using:mdview.Presentation.Views"
         x:Class="mdview.Presentation.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="mdview">
@@ -25,6 +26,19 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </Border>
-        <ScrollViewer Grid.Row="1" />
+        <ScrollViewer Grid.Row="1">
+            <ItemsControl ItemsSource="{Binding ActiveDocument.Blocks}" Margin="18,12,18,20">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <views:MarkdownBlockView />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
     </Grid>
 </Window>
