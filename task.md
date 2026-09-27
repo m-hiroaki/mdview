@@ -222,6 +222,8 @@
 
 - `.github/workflows/ci.yml` に macOS / Windows の Release Build/Test を追加した。
 - `scripts/publish.sh` に `osx-arm64`、`osx-x64`、`win-x64`、`win-arm64` 向け self-contained publish と ZIP 作成を追加した。
+- `Microsoft.Testing.Extensions.CodeCoverage` と `scripts/coverage.sh` / `scripts/coverage.ps1` を追加し、macOS / Windows でテストカバレッジを Cobertura XML として出力できるようにした。
+- `dotnet-reportgenerator-globaltool` を追加し、`coverage/report/index.html` で全体・ファイル・クラス・メソッド・行単位のカバレッジを可視化できるようにした。
 - Release Build は成功し、`dotnet test mdview.sln --configuration Release --no-restore` は 28 件成功、失敗 0 だった。
 - Windows 実機確認、macOS `.app` バンドル、ユーザー確認ダイアログ、性能計測は未完了である。
 

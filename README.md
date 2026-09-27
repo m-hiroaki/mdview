@@ -62,6 +62,22 @@ dotnet test mdview.sln --configuration Release
 
 テストフレームワークは xUnit v3、実行基盤は Microsoft Testing Platform です。
 
+カバレッジを Cobertura XML 形式で測定するには、macOS / Linux では次を実行します。
+
+```sh
+scripts/coverage.sh
+```
+
+Windows PowerShell では次を実行します。
+
+```powershell
+.\scripts\coverage.ps1
+```
+
+各テストプロジェクトの Cobertura XML が `coverage/<テストプロジェクト名>/coverage.cobertura.xml` に出力されます。GitHub Actions では macOS / Windows の各ジョブで測定し、成果物として保存します。
+
+同時に `coverage/report/index.html` が生成されます。ブラウザーで開くと、全体・プロジェクト・ファイル・クラス・メソッド単位のカバレッジ率と、ソースコードの行単位の実行状況を色分けして確認できます。
+
 ## Publish と配布
 
 自己完結型の publish を作成する例:

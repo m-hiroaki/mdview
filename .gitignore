@@ -1,6 +1,8 @@
 **/bin/
 **/obj/
 **/TestResults/
+coverage/
+.config/dotnet-tools.json.user
 .vs/
 .DS_Store
 
