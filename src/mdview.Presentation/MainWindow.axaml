@@ -5,7 +5,7 @@
         x:Class="mdview.Presentation.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="mdview">
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,Auto,*">
         <Border Grid.Row="0"
                 MinHeight="38"
                 Padding="8,0"
@@ -29,8 +29,29 @@
                 </TabControl.ItemTemplate>
             </TabControl>
         </Border>
-        <ScrollViewer Grid.Row="1">
-            <ItemsControl ItemsSource="{Binding ActiveDocument.Blocks}" Margin="18,12,18,20">
+        <Border Grid.Row="1"
+                IsVisible="{Binding IsSearchVisible}"
+                Background="#252525"
+                Padding="8,4">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="6">
+                <TextBox x:Name="SearchTextBox"
+                         Text="{Binding SearchQuery, Mode=TwoWay}"
+                         Watermark="Search"
+                         KeyDown="OnSearchKeyDown" />
+                <TextBlock Grid.Column="1"
+                           VerticalAlignment="Center"
+                           MinWidth="55"
+                           TextAlignment="Center"
+                           Text="{Binding SearchStatus}" />
+                <Button Grid.Column="2" Content="Prev" Click="OnPreviousSearchClick" />
+                <Button Grid.Column="3" Content="Next" Click="OnNextSearchClick" />
+                <Button Grid.Column="4" Content="Close" Click="OnCloseSearchClick" />
+            </Grid>
+        </Border>
+        <ScrollViewer x:Name="DocumentScrollViewer" Grid.Row="2">
+            <ItemsControl x:Name="DocumentContent"
+                          ItemsSource="{Binding ActiveDocument.Blocks}"
+                          Margin="18,12,18,20">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <VirtualizingStackPanel />

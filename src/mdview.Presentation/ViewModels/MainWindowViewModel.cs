@@ -14,8 +14,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
   private readonly MarkdownFileReader _fileReader = new();
   private readonly MarkdigMarkdownParser _parser = new();
   private readonly Dictionary<string, IMarkdownFileWatcher> _watchers = new(StringComparer.OrdinalIgnoreCase);
+  private readonly MarkdownSearchState _searchState = new();
+  private readonly MarkdownZoomState _zoomState = new();
   private MarkdownDocumentModel _activeDocument = new(Array.Empty<MarkdownBlock>());
   private DocumentTabViewModel? _activeTab;
+  private bool _isSearchVisible;
 
   public ObservableCollection<DocumentTabViewModel> Tabs { get; } = [];
 
@@ -31,6 +34,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
       _activeTab = value;
       ActiveDocument = value?.Document ?? new MarkdownDocumentModel(Array.Empty<MarkdownBlock>());
+      _searchState.SetText(value?.SourceContent);
+      OnPropertyChanged(nameof(SearchStatus));
       PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActiveTab)));
     }
   }
@@ -48,6 +53,68 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
       _activeDocument = value;
       PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActiveDocument)));
     }
+  }
+
+  public bool IsSearchVisible
+  {
+    get => _isSearchVisible;
+    set
+    {
+      if (_isSearchVisible == value)
+      {
+        return;
+      }
+
+      _isSearchVisible = value;
+      OnPropertyChanged(nameof(IsSearchVisible));
+    }
+  }
+
+  public string SearchQuery
+  {
+    get => _searchState.Query;
+    set
+    {
+      _searchState.SetQuery(value);
+      OnPropertyChanged(nameof(SearchQuery));
+      OnPropertyChanged(nameof(SearchStatus));
+    }
+  }
+
+  public string SearchStatus => _searchState.MatchCount == 0
+    ? "0 / 0"
+    : $"{_searchState.CurrentMatch + 1} / {_searchState.MatchCount}";
+
+  public double ZoomScale => _zoomState.Scale;
+
+  public void MoveSearchNext()
+  {
+    _searchState.MoveNext();
+    OnPropertyChanged(nameof(SearchStatus));
+  }
+
+  public void MoveSearchPrevious()
+  {
+    _searchState.MovePrevious();
+    OnPropertyChanged(nameof(SearchStatus));
+  }
+
+  public void IncreaseZoom()
+  {
+    _zoomState.Increase();
+    OnPropertyChanged(nameof(ZoomScale));
+  }
+
+  public void DecreaseZoom()
+  {
+    _zoomState.Decrease();
+    OnPropertyChanged(nameof(ZoomScale));
+  }
+
+  public void ResetZoom()
+  {
+    _zoomState.Reset();
+    OnPropertyChanged(nameof(ZoomScale));
   }
 
   public async Task OpenFileAsync(string path)
@@ -191,6 +258,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
       tab.State = DocumentTabState.Loaded;
       if (ReferenceEquals(ActiveTab, tab))
       {
+        _searchState.SetText(content);
+        OnPropertyChanged(nameof(SearchStatus));
+      }
+      if (ReferenceEquals(ActiveTab, tab))
+      {
         ActiveDocument = tab.Document;
       }
     }
@@ -207,6 +279,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
       new MarkdownTextInline(message)
     ])
   ]);
+
+  private void OnPropertyChanged(string propertyName) =>
+    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
   public event PropertyChangedEventHandler? PropertyChanged;
 }

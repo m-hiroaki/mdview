@@ -14,6 +14,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = new MainWindowViewModel();
+        ApplyZoom();
 
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
 
@@ -92,6 +93,43 @@ public partial class MainWindow : Window
 
     private async void OnKeyDown(object? sender, KeyEventArgs e)
     {
+        if (e.Key == Key.F && (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta)))
+        {
+            e.Handled = true;
+            if (DataContext is MainWindowViewModel viewModel)
+            {
+                viewModel.IsSearchVisible = true;
+                SearchTextBox.Focus();
+                SearchTextBox.SelectAll();
+            }
+
+            return;
+        }
+
+        var hasCommandModifier = e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta);
+
+        if (e.Key == Key.Add || (e.Key == Key.OemPlus && hasCommandModifier))
+        {
+            if (DataContext is MainWindowViewModel zoomViewModel && hasCommandModifier)
+            {
+                e.Handled = true;
+                zoomViewModel.IncreaseZoom();
+                ApplyZoom();
+                return;
+            }
+        }
+
+        if (e.Key == Key.Subtract || (e.Key == Key.OemMinus && hasCommandModifier))
+        {
+            if (DataContext is MainWindowViewModel zoomViewModel && hasCommandModifier)
+            {
+                e.Handled = true;
+                zoomViewModel.DecreaseZoom();
+                ApplyZoom();
+                return;
+            }
+        }
+
         if (e.Key == Key.R && (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta)))
         {
             e.Handled = true;
@@ -109,6 +147,61 @@ public partial class MainWindow : Window
             e.Handled = true;
             await OpenFileDialogAsync();
             return;
+        }
+    }
+
+    private void OnSearchKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape && DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.IsSearchVisible = false;
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Enter && DataContext is MainWindowViewModel searchViewModel)
+        {
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+            {
+                searchViewModel.MoveSearchPrevious();
+            }
+            else
+            {
+                searchViewModel.MoveSearchNext();
+            }
+
+            e.Handled = true;
+        }
+    }
+
+    private void OnPreviousSearchClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.MoveSearchPrevious();
+        }
+    }
+
+    private void OnNextSearchClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.MoveSearchNext();
+        }
+    }
+
+    private void OnCloseSearchClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.IsSearchVisible = false;
+        }
+    }
+
+    private void ApplyZoom()
+    {
+        if (DataContext is MainWindowViewModel viewModel)
+        {
+            DocumentContent.RenderTransform = new Avalonia.Media.ScaleTransform(viewModel.ZoomScale, viewModel.ZoomScale);
+            DocumentContent.RenderTransformOrigin = new Avalonia.RelativePoint(0, 0, Avalonia.RelativeUnit.Relative);
         }
     }
 
