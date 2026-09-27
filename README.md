@@ -2,7 +2,7 @@
 
 mdview は Markdown ファイルを素早く開いて読むための、軽量なデスクトップ Viewer です。Markdown の編集機能を持たず、シンプルな閲覧体験を目指しています。
 
-> **開発中:** 現在はアプリの土台、GFM パーサー、ネイティブ描画の基礎を実装した段階です。Markdown ファイルを開く操作やタブ管理はまだ実装されていません。アプリを起動すると空のダークテーマ画面が表示されます。
+> **開発中:** 基本的な Markdown 表示、タブ、リンク、画像、検索、Zoom、ファイル変更監視を実装しています。Windows の実機確認、macOS `.app` 化、ファイル関連付けの確認 UI は今後の作業です。
 
 ## 対応環境
 
@@ -11,7 +11,7 @@ mdview は Markdown ファイルを素早く開いて読むための、軽量な
 - 開発 SDK: .NET 10 LTS（`global.json` で SDK 10.0.401 を指定）
 - UI: Avalonia UI 12.1.3
 
-現在の実機確認は macOS arm64 のみです。Windows を含む全対象環境の検証と配布用 ZIP の作成は今後の作業です。
+現在の実機確認は macOS arm64 のみです。GitHub Actions では macOS / Windows の Build と Test を実行します。
 
 ## 現在実装されているもの
 
@@ -40,7 +40,7 @@ dotnet build mdview.sln --configuration Release
 dotnet run --project src/mdview.Presentation/mdview.Presentation.csproj
 ```
 
-現状はファイルを開く操作がないため、起動後の文書領域は空です。
+起動時引数、`Ctrl/Cmd + O`、およびアプリ内のファイル選択から Markdown ファイルを開けます。
 
 ## テスト
 
@@ -73,7 +73,16 @@ dotnet publish src/mdview.Presentation/mdview.Presentation.csproj --configuratio
 dotnet publish src/mdview.Presentation/mdview.Presentation.csproj --configuration Release --runtime win-arm64 --self-contained true
 ```
 
-成果物は各 RID の `bin/Release/net10.0/<RID>/publish/` に出力されます。配布方式は ZIP 展開を想定し、publish ディレクトリを ZIP 化します。現時点では ZIP 作成、macOS `.app` バンドル、GitHub Actions の CI は未整備です。インストーラーは作成しません。
+成果物は各 RID の `bin/Release/net10.0/<RID>/publish/` に出力されます。macOS / Linux では、次のスクリプトで自己完結型 publish と ZIP を作成できます。
+
+```sh
+scripts/publish.sh osx-arm64
+scripts/publish.sh osx-x64
+scripts/publish.sh win-x64
+scripts/publish.sh win-arm64
+```
+
+ZIP は `artifacts/mdview-<RID>.zip` に作成されます。macOS `.app` バンドルとインストーラーは作成しません。
 
 ## 主な依存関係
 
@@ -106,7 +115,7 @@ tests/
 - ファイル変更監視、自動再読込、削除・再出現時の状態管理
 - 外部リンク、相対 Markdown リンク、Heading Anchor、相対画像、検索、Zoom
 - Windows のユーザー単位ファイル関連付け基盤（確認 UI は未実装）
-- Windows での動作確認、長文の負荷測定、配布 ZIP と CI
+- Windows での実機動作確認、長文の負荷測定、macOS `.app` バンドル
 
 mdview は Markdown の内容を外部送信せず、Telemetry、Analytics、アカウント、Cloud Sync を実装しません。外部画像の自動ダウンロードも行いません。HTML は実行せず、テキストとして扱います。
 

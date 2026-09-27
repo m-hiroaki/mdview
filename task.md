@@ -209,14 +209,21 @@
 
 ### Phase 11 — 品質確認・CI・配布
 
-- [ ] Unit Test を追加・実行し、全プロジェクトの Build/Test を通す。
-- [ ] GitHub Actions にシンプルな Build/Test の CI を追加し、テスト実行時は `TESTINGPLATFORM_TELEMETRY_OPTOUT=1` を設定する。
-- [ ] Windows と macOS の一般的な CPU アーキテクチャ向けに ZIP 配布物を作成できるようにする。インストーラーは作らない。
-- [ ] README に目的、対応 OS、機能、開発環境、Build/Test/Publish/配布方法、既知の制限を記載する。
+- [x] Unit Test を追加・実行し、全プロジェクトの Build/Test を通す。
+- [x] GitHub Actions にシンプルな Build/Test の CI を追加し、テスト実行時は `TESTINGPLATFORM_TELEMETRY_OPTOUT=1` を設定する。
+- [x] Windows と macOS の一般的な CPU アーキテクチャ向けに ZIP 配布物を作成できるようにする。インストーラーは作らない。
+- [x] README に目的、対応 OS、機能、開発環境、Build/Test/Publish/配布方法、既知の制限を記載する。
 - [ ] 起動速度、アイドル時メモリ、スクロール、タブ切替、描画速度を確認し、問題があれば修正する。
 - [ ] 最終的に対応 OS の Build/Test と手動動作確認を行う。
 
 **完了条件:** Definition of Done を満たし、制限事項と再現可能な開発・配布手順が文書化されている。
+
+**進行状況（2026-09-27）:**
+
+- `.github/workflows/ci.yml` に macOS / Windows の Release Build/Test を追加した。
+- `scripts/publish.sh` に `osx-arm64`、`osx-x64`、`win-x64`、`win-arm64` 向け self-contained publish と ZIP 作成を追加した。
+- Release Build は成功し、`dotnet test mdview.sln --configuration Release --no-restore` は 28 件成功、失敗 0 だった。
+- Windows 実機確認、macOS `.app` バンドル、ユーザー確認ダイアログ、性能計測は未完了である。
 
 ## 全体の完了基準
 
