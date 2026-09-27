@@ -9,6 +9,39 @@ namespace mdview.Presentation;
 public static class MarkdownLinkHandler
 {
   private static readonly MarkdownPathResolver PathResolver = new();
+  private static string? CurrentDocumentPath { get; set; }
+
+  public static void SetCurrentDocumentPath(string? path)
+  {
+    CurrentDocumentPath = path;
+  }
+
+  public static string ResolveDocumentPath(string destination, string? currentMarkdownPath = null)
+  {
+    if (string.IsNullOrWhiteSpace(destination))
+    {
+      return string.Empty;
+    }
+
+    var effectivePath = currentMarkdownPath ?? CurrentDocumentPath;
+    if (string.IsNullOrWhiteSpace(effectivePath))
+    {
+      return destination;
+    }
+
+    if (destination.StartsWith("#", StringComparison.Ordinal))
+    {
+      return destination;
+    }
+
+    if (Uri.TryCreate(destination, UriKind.Absolute, out var absoluteUri) &&
+        (absoluteUri.Scheme == Uri.UriSchemeHttp || absoluteUri.Scheme == Uri.UriSchemeHttps))
+    {
+      return destination;
+    }
+
+    return PathResolver.ResolveDocumentLink(effectivePath, destination);
+  }
 
   public static void Open(string? currentMarkdownPath, string destination)
   {
@@ -34,18 +67,24 @@ public static class MarkdownLinkHandler
       return;
     }
 
-    var resolvedPath = PathResolver.ResolveDocumentLink(currentMarkdownPath, destination);
+    var resolvedPath = ResolveDocumentPath(destination, currentMarkdownPath);
     OpenDocumentPath(resolvedPath);
   }
 
   public static string ResolveImagePath(string? currentMarkdownPath, string destination)
   {
-    if (string.IsNullOrWhiteSpace(currentMarkdownPath) || string.IsNullOrWhiteSpace(destination))
+    if (string.IsNullOrWhiteSpace(destination))
     {
       return string.Empty;
     }
 
-    if (Uri.TryCreate(destination, UriKind.Absolute, out var absoluteUri) && (absoluteUri.Scheme == Uri.UriSchemeHttp || absoluteUri.Scheme == Uri.UriSchemeHttps))
+    if (string.IsNullOrWhiteSpace(currentMarkdownPath))
+    {
+      return destination;
+    }
+
+    if (Uri.TryCreate(destination, UriKind.Absolute, out var absoluteUri) &&
+        (absoluteUri.Scheme == Uri.UriSchemeHttp || absoluteUri.Scheme == Uri.UriSchemeHttps))
     {
       return string.Empty;
     }

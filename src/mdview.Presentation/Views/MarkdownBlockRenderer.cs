@@ -1,9 +1,11 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using mdview.Application.Models;
+using System.Text;
 
 namespace mdview.Presentation.Views;
 
@@ -13,13 +15,13 @@ internal static class MarkdownBlockRenderer
   private static readonly IBrush LinkForeground = new SolidColorBrush(Color.Parse("#77BDFB"));
   private static readonly IBrush InlineCodeForeground = new SolidColorBrush(Color.Parse("#E6B673"));
 
-  public static Control Render(MarkdownBlock block) => block switch
+  public static Control Render(MarkdownBlock block, string? currentMarkdownPath = null) => block switch
   {
-    MarkdownHeadingBlock heading => RenderHeading(heading),
-    MarkdownParagraphBlock paragraph => RenderParagraph(paragraph),
+    MarkdownHeadingBlock heading => RenderHeading(heading, currentMarkdownPath),
+    MarkdownParagraphBlock paragraph => RenderParagraph(paragraph, currentMarkdownPath),
     MarkdownCodeBlock code => new MarkdownCodeBlockView(code),
-    MarkdownListBlock list => RenderList(list),
-    MarkdownQuoteBlock quote => RenderQuote(quote),
+    MarkdownListBlock list => RenderList(list, currentMarkdownPath),
+    MarkdownQuoteBlock quote => RenderQuote(quote, currentMarkdownPath),
     MarkdownTableBlock table => RenderTable(table),
     MarkdownThematicBreakBlock => new Border
     {
@@ -31,7 +33,7 @@ internal static class MarkdownBlockRenderer
     _ => RenderText(string.Empty)
   };
 
-  private static Control RenderHeading(MarkdownHeadingBlock heading)
+  private static Control RenderHeading(MarkdownHeadingBlock heading, string? currentMarkdownPath)
   {
     var fontSize = heading.Level switch
     {
@@ -43,13 +45,38 @@ internal static class MarkdownBlockRenderer
       _ => 16
     };
 
-    return RenderInlineText(heading.Inlines, fontSize, FontWeight.Bold, new Thickness(0, 14, 0, 8));
+    var panel = new WrapPanel
+    {
+      Orientation = Orientation.Horizontal,
+      Margin = new Thickness(0, 14, 0, 8),
+      Tag = heading.Anchor
+    };
+
+    foreach (var inline in heading.Inlines)
+    {
+      panel.Children.Add(CreateInlineControl(inline, currentMarkdownPath, fontSize, FontWeight.Bold));
+    }
+
+    return panel;
   }
 
-  private static Control RenderParagraph(MarkdownParagraphBlock paragraph) =>
-    RenderInlineText(paragraph.Inlines, 16, FontWeight.Normal, new Thickness(0, 4, 0, 10));
+  private static Control RenderParagraph(MarkdownParagraphBlock paragraph, string? currentMarkdownPath)
+  {
+    var panel = new WrapPanel
+    {
+      Orientation = Orientation.Horizontal,
+      Margin = new Thickness(0, 4, 0, 10)
+    };
 
-  private static Control RenderList(MarkdownListBlock list)
+    foreach (var inline in paragraph.Inlines)
+    {
+      panel.Children.Add(CreateInlineControl(inline, currentMarkdownPath, 16, FontWeight.Normal));
+    }
+
+    return panel;
+  }
+
+  private static Control RenderList(MarkdownListBlock list, string? currentMarkdownPath)
   {
     var panel = new StackPanel
     {
@@ -78,7 +105,7 @@ internal static class MarkdownBlockRenderer
       var contents = new StackPanel { Spacing = 5 };
       foreach (var child in item.Blocks)
       {
-        contents.Children.Add(Render(child));
+        contents.Children.Add(Render(child, currentMarkdownPath));
       }
 
       Grid.SetColumn(contents, 1);
@@ -89,12 +116,12 @@ internal static class MarkdownBlockRenderer
     return panel;
   }
 
-  private static Control RenderQuote(MarkdownQuoteBlock quote)
+  private static Control RenderQuote(MarkdownQuoteBlock quote, string? currentMarkdownPath)
   {
     var contents = new StackPanel { Spacing = 4 };
     foreach (var block in quote.Blocks)
     {
-      contents.Children.Add(Render(block));
+      contents.Children.Add(Render(block, currentMarkdownPath));
     }
 
     return new Border
@@ -125,7 +152,7 @@ internal static class MarkdownBlockRenderer
       for (var columnIndex = 0; columnIndex < row.Cells.Count; columnIndex++)
       {
         var cell = row.Cells[columnIndex];
-        var text = CreateInlineText(cell.Inlines);
+        var text = BuildInlineTextBlock(cell.Inlines, 16, row.IsHeader ? FontWeight.Bold : FontWeight.Normal);
         text.FontWeight = row.IsHeader ? FontWeight.Bold : FontWeight.Normal;
         text.TextAlignment = GetTextAlignment(table.Alignments, columnIndex);
 
@@ -160,17 +187,157 @@ internal static class MarkdownBlockRenderer
     };
   }
 
-  private static TextBlock RenderInlineText(
-    IReadOnlyList<MarkdownInline> inlines,
-    double fontSize,
-    FontWeight fontWeight,
-    Thickness margin)
+  private static Control CreateInlineControl(MarkdownInline inline, string? currentMarkdownPath, double fontSize, FontWeight fontWeight)
   {
-    var text = CreateInlineText(inlines);
-    text.FontSize = fontSize;
-    text.FontWeight = fontWeight;
-    text.Margin = margin;
-    return text;
+    return inline switch
+    {
+      MarkdownTextInline literal => new TextBlock
+      {
+        Text = literal.Text,
+        FontSize = fontSize,
+        FontWeight = fontWeight,
+        TextWrapping = TextWrapping.Wrap
+      },
+      MarkdownCodeInline code => new Border
+      {
+        Padding = new Thickness(4, 2),
+        Margin = new Thickness(0, 0, 4, 0),
+        Background = new SolidColorBrush(Color.Parse("#2A2A2A")),
+        Child = new TextBlock
+        {
+          Text = code.Code,
+          FontFamily = new FontFamily("monospace"),
+          FontSize = fontSize - 2,
+          Foreground = InlineCodeForeground
+        }
+      },
+      MarkdownEmphasisInline emphasis => new TextBlock
+      {
+        Text = GetPlainText(emphasis.Inlines),
+        FontSize = fontSize,
+        FontWeight = fontWeight,
+        FontStyle = FontStyle.Italic,
+        TextWrapping = TextWrapping.Wrap
+      },
+      MarkdownStrongInline strong => new TextBlock
+      {
+        Text = GetPlainText(strong.Inlines),
+        FontSize = fontSize,
+        FontWeight = FontWeight.Bold,
+        TextWrapping = TextWrapping.Wrap
+      },
+      MarkdownStrikethroughInline strike => new TextBlock
+      {
+        Text = GetPlainText(strike.Inlines),
+        FontSize = fontSize,
+        FontWeight = fontWeight,
+        TextDecorations = TextDecorations.Strikethrough,
+        TextWrapping = TextWrapping.Wrap
+      },
+      MarkdownLinkInline link => CreateLinkButton(link, currentMarkdownPath, fontSize, fontWeight),
+      MarkdownImageInline image => new TextBlock
+      {
+        Text = string.IsNullOrWhiteSpace(image.AltText) ? "[image]" : image.AltText,
+        FontSize = fontSize,
+        FontStyle = FontStyle.Italic,
+        Foreground = LinkForeground,
+        TextWrapping = TextWrapping.Wrap
+      },
+      MarkdownBreakInline => new TextBlock { Text = " ", FontSize = fontSize },
+      MarkdownTaskListInline task => new TextBlock
+      {
+        Text = task.IsChecked ? "☑ " : "☐ ",
+        FontSize = fontSize,
+        FontWeight = fontWeight,
+        Foreground = LinkForeground
+      },
+      _ => new TextBlock { Text = string.Empty }
+    };
+  }
+
+  private static TextBlock BuildInlineTextBlock(IReadOnlyList<MarkdownInline> inlines, double fontSize, FontWeight fontWeight)
+  {
+    var block = new TextBlock
+    {
+      FontSize = fontSize,
+      FontWeight = fontWeight,
+      TextWrapping = TextWrapping.Wrap
+    };
+
+    var collection = new InlineCollection();
+    foreach (var inline in inlines)
+    {
+      collection.Add(CreateInlineSpan(inline, null, fontSize, fontWeight));
+    }
+
+    block.Inlines = collection;
+    return block;
+  }
+
+  private static Inline CreateInlineSpan(MarkdownInline inline, string? currentMarkdownPath, double fontSize, FontWeight fontWeight)
+  {
+    return inline switch
+    {
+      MarkdownTextInline text => new Run(text.Text),
+      MarkdownCodeInline code => new Run(code.Code)
+      {
+        FontFamily = new FontFamily("monospace"),
+        Foreground = InlineCodeForeground
+      },
+      MarkdownEmphasisInline emphasis => new Span
+      {
+        FontStyle = FontStyle.Italic,
+        Inlines = BuildInlineCollection(emphasis.Inlines, fontSize, fontWeight)
+      },
+      MarkdownStrongInline strong => new Span
+      {
+        FontWeight = FontWeight.Bold,
+        Inlines = BuildInlineCollection(strong.Inlines, fontSize, fontWeight)
+      },
+      MarkdownStrikethroughInline strike => new Span
+      {
+        TextDecorations = TextDecorations.Strikethrough,
+        Inlines = BuildInlineCollection(strike.Inlines, fontSize, fontWeight)
+      },
+      MarkdownLinkInline link => new Run(GetPlainText(link.Inlines)),
+      MarkdownImageInline image => new Run(string.IsNullOrWhiteSpace(image.AltText) ? "image" : image.AltText),
+      MarkdownBreakInline => new LineBreak(),
+      MarkdownTaskListInline task => new Run(task.IsChecked ? "☑ " : "☐ "),
+      _ => new Run(string.Empty)
+    };
+  }
+
+  private static InlineCollection BuildInlineCollection(IReadOnlyList<MarkdownInline> inlines, double fontSize, FontWeight fontWeight)
+  {
+    var collection = new InlineCollection();
+    foreach (var inline in inlines)
+    {
+      collection.Add(CreateInlineSpan(inline, null, fontSize, fontWeight));
+    }
+
+    return collection;
+  }
+
+  private static Button CreateLinkButton(MarkdownLinkInline link, string? currentMarkdownPath, double fontSize, FontWeight fontWeight)
+  {
+    var button = new Button
+    {
+      Content = new TextBlock
+      {
+        Text = GetPlainText(link.Inlines),
+        FontSize = fontSize,
+        FontWeight = fontWeight,
+        Foreground = LinkForeground,
+        TextDecorations = TextDecorations.Underline
+      },
+      Background = Brushes.Transparent,
+      BorderThickness = new Thickness(0),
+      Padding = new Thickness(0, 0, 2, 0),
+      Cursor = new Cursor(StandardCursorType.Hand)
+    };
+
+    button.Click += (_, _) => MarkdownLinkHandler.Open(currentMarkdownPath, link.Destination);
+    return button;
   }
 
   private static TextBlock RenderText(string value, FontFamily? fontFamily = null)
@@ -189,51 +356,44 @@ internal static class MarkdownBlockRenderer
     return text;
   }
 
-  private static TextBlock CreateInlineText(IEnumerable<MarkdownInline> inlines)
+  private static string GetPlainText(IEnumerable<MarkdownInline> inlines)
   {
-    var collection = new InlineCollection();
+    var builder = new StringBuilder();
+
     foreach (var inline in inlines)
     {
-      collection.Add(RenderInline(inline));
+      switch (inline)
+      {
+        case MarkdownTextInline text:
+          builder.Append(text.Text);
+          break;
+        case MarkdownCodeInline code:
+          builder.Append(code.Code);
+          break;
+        case MarkdownEmphasisInline emphasis:
+          builder.Append(GetPlainText(emphasis.Inlines));
+          break;
+        case MarkdownStrongInline strong:
+          builder.Append(GetPlainText(strong.Inlines));
+          break;
+        case MarkdownStrikethroughInline strike:
+          builder.Append(GetPlainText(strike.Inlines));
+          break;
+        case MarkdownLinkInline link:
+          builder.Append(GetPlainText(link.Inlines));
+          break;
+        case MarkdownImageInline image:
+          builder.Append(string.IsNullOrWhiteSpace(image.AltText) ? "image" : image.AltText);
+          break;
+        case MarkdownBreakInline:
+          builder.Append(' ');
+          break;
+        case MarkdownTaskListInline task:
+          builder.Append(task.IsChecked ? "☑ " : "☐ ");
+          break;
+      }
     }
 
-    return new TextBlock { TextWrapping = TextWrapping.Wrap, Inlines = collection };
-  }
-
-  private static Inline RenderInline(MarkdownInline inline) => inline switch
-  {
-    MarkdownTextInline literal => new Run(literal.Text),
-    MarkdownCodeInline code => new Run(code.Code)
-    {
-      FontFamily = new FontFamily("monospace"),
-      Foreground = InlineCodeForeground
-    },
-    MarkdownEmphasisInline emphasis => RenderSpan(emphasis.Inlines, span => span.FontStyle = FontStyle.Italic),
-    MarkdownStrongInline strong => RenderSpan(strong.Inlines, span => span.FontWeight = FontWeight.Bold),
-    MarkdownStrikethroughInline strike => RenderSpan(strike.Inlines, span => span.TextDecorations = TextDecorations.Strikethrough),
-    MarkdownLinkInline link => RenderSpan(link.Inlines, span =>
-    {
-      span.Foreground = LinkForeground;
-      span.TextDecorations = TextDecorations.Underline;
-    }),
-    MarkdownImageInline image => RenderSpan([new MarkdownTextInline(string.IsNullOrEmpty(image.AltText) ? "image" : image.AltText)],
-      span => span.FontStyle = FontStyle.Italic),
-    MarkdownBreakInline => new LineBreak(),
-    MarkdownTaskListInline task => new Run(task.IsChecked ? "☑ " : "☐ "),
-    _ => new Run(string.Empty)
-  };
-
-  private static Span RenderSpan(IEnumerable<MarkdownInline> inlines, Action<Span> style)
-  {
-    var span = new Span();
-    style(span);
-    var collection = new InlineCollection();
-    foreach (var inline in inlines)
-    {
-      collection.Add(RenderInline(inline));
-    }
-
-    span.Inlines = collection;
-    return span;
+    return builder.ToString();
   }
 }

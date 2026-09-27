@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.VisualTree;
 using mdview.Presentation.ViewModels;
 
 namespace mdview.Presentation;
@@ -31,6 +32,23 @@ public partial class MainWindow : Window
         {
             return;
         }
+
+        var scrollViewer = this.FindControl<ScrollViewer>("DocumentScrollViewer");
+        if (scrollViewer is null)
+        {
+            return;
+        }
+
+        var target = scrollViewer.GetVisualDescendants()
+            .OfType<Control>()
+            .FirstOrDefault(control => string.Equals(control.Tag?.ToString(), anchor, StringComparison.OrdinalIgnoreCase));
+
+        if (target is null)
+        {
+            return;
+        }
+
+        target.BringIntoView();
     }
 
     private async Task OpenFileAsync(string path)
