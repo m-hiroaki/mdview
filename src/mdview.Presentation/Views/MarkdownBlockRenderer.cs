@@ -202,7 +202,7 @@ internal static class MarkdownBlockRenderer
         Margin = new Thickness(0, 0, 4, 0),
         VerticalAlignment = VerticalAlignment.Center,
         Background = new SolidColorBrush(Color.Parse("#2A2A2A")),
-        Child = new TextBlock
+        Child = new SelectableTextBlock
         {
           Text = code.Code,
           FontFamily = new FontFamily("monospace"),
@@ -211,7 +211,7 @@ internal static class MarkdownBlockRenderer
           Foreground = InlineCodeForeground
         }
       },
-      MarkdownEmphasisInline emphasis => new TextBlock
+      MarkdownEmphasisInline emphasis => new SelectableTextBlock
       {
         Text = GetPlainText(emphasis.Inlines),
         FontSize = fontSize,
@@ -219,14 +219,14 @@ internal static class MarkdownBlockRenderer
         FontStyle = FontStyle.Italic,
         TextWrapping = TextWrapping.Wrap
       },
-      MarkdownStrongInline strong => new TextBlock
+      MarkdownStrongInline strong => new SelectableTextBlock
       {
         Text = GetPlainText(strong.Inlines),
         FontSize = fontSize,
         FontWeight = FontWeight.Bold,
         TextWrapping = TextWrapping.Wrap
       },
-      MarkdownStrikethroughInline strike => new TextBlock
+      MarkdownStrikethroughInline strike => new SelectableTextBlock
       {
         Text = GetPlainText(strike.Inlines),
         FontSize = fontSize,
@@ -248,9 +248,9 @@ internal static class MarkdownBlockRenderer
     };
   }
 
-  private static TextBlock CreateHighlightedText(string text, double fontSize, FontWeight fontWeight, string? searchQuery)
+  private static SelectableTextBlock CreateHighlightedText(string text, double fontSize, FontWeight fontWeight, string? searchQuery)
   {
-    var block = new TextBlock
+    var block = new SelectableTextBlock
     {
       FontSize = fontSize,
       FontWeight = fontWeight,
@@ -287,9 +287,9 @@ internal static class MarkdownBlockRenderer
     return block;
   }
 
-  private static TextBlock BuildInlineTextBlock(IReadOnlyList<MarkdownInline> inlines, double fontSize, FontWeight fontWeight)
+  private static SelectableTextBlock BuildInlineTextBlock(IReadOnlyList<MarkdownInline> inlines, double fontSize, FontWeight fontWeight)
   {
-    var block = new TextBlock
+    var block = new SelectableTextBlock
     {
       FontSize = fontSize,
       FontWeight = fontWeight,
@@ -368,8 +368,8 @@ internal static class MarkdownBlockRenderer
     };
 
     button.Content = CreateHighlightedText(GetPlainText(link.Inlines), fontSize, fontWeight, searchQuery);
-    ((TextBlock)button.Content).Foreground = LinkForeground;
-    ((TextBlock)button.Content).TextDecorations = TextDecorations.Underline;
+    ((SelectableTextBlock)button.Content).Foreground = LinkForeground;
+    ((SelectableTextBlock)button.Content).TextDecorations = TextDecorations.Underline;
 
     button.Click += (_, _) => MarkdownLinkHandler.Open(currentMarkdownPath, link.Destination);
     return button;
@@ -409,9 +409,9 @@ internal static class MarkdownBlockRenderer
     TextWrapping = TextWrapping.Wrap
   };
 
-  private static TextBlock RenderText(string value, FontFamily? fontFamily = null)
+  private static SelectableTextBlock RenderText(string value, FontFamily? fontFamily = null)
   {
-    var text = new TextBlock
+    var text = new SelectableTextBlock
     {
       Text = value,
       TextWrapping = TextWrapping.Wrap,
