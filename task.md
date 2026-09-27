@@ -82,13 +82,20 @@
 
 ### Phase 4 — Markdown Parser と Document Model
 
-- [ ] Markdig の GFM 対応設定を使用する。
-- [ ] Markdig の型を Presentation やアプリケーション全体に漏らさず、必要な表示用 Document Model に変換する。
-- [ ] 見出し、段落、強調、取り消し線、リスト、引用、コード、リンク、画像、テーブル、Task List、自動リンク、水平線を対象にする。
-- [ ] Heading Anchor の生成規則を実装する。
-- [ ] 対応要素、Document Model 変換、Anchor をテストする。
+- [x] Markdig の GFM 対応設定を使用する。
+- [x] Markdig の型を Presentation やアプリケーション全体に漏らさず、必要な表示用 Document Model に変換する。
+- [x] 見出し、段落、強調、取り消し線、リスト、引用、コード、リンク、画像、テーブル、Task List、自動リンク、水平線を対象にする。
+- [x] Heading Anchor の生成規則を実装する。
+- [x] 対応要素、Document Model 変換、Anchor をテストする。
 
 **完了条件:** 代表的な GFM 文書を安定してモデル化でき、重要な変換規則にテストがある。
+
+**実施結果（2026-09-27）:**
+
+- Markdig `1.4.0`（BSD-2-Clause）を Infrastructure のみに追加した。Pipe Tables、Task Lists、Auto Links、Strikethrough のみを有効にし、数式や Mermaid など対象外の拡張は有効化していない。
+- Application に Markdig 非依存の `MarkdownDocumentModel` とブロック/インライン型を定義し、`IMarkdownParser` の実装で見出し、段落、コード、ネストしたリスト、引用、テーブル、Task List、リンク、画像、改行、水平線を変換する。HTML は実行せず、モデルに文字列として保持する。
+- 見出し文字列からアンカーを生成し、同一スラッグおよび自然発生する番号との衝突を回避する。
+- GFM 構文・Document Model・重複アンカーを Infrastructure の xUnit テストで確認した。Release Build 成功、全15テスト成功、追加依存は Markdig のみ。
 
 ### Phase 5 — Native Markdown Rendering
 
