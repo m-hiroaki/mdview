@@ -1,12 +1,17 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using mdview.Application.Models;
+using mdview.Application.UseCases;
+using mdview.Infrastructure.FileSystem;
+using mdview.Infrastructure.Markdown;
 
 namespace mdview.Presentation.ViewModels;
 
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
   private readonly MarkdownTabManager _tabManager = new();
+  private readonly MarkdownFileReader _fileReader = new();
+  private readonly MarkdigMarkdownParser _parser = new();
   private MarkdownDocumentModel _activeDocument = new(Array.Empty<MarkdownBlock>());
   private DocumentTabViewModel? _activeTab;
 
@@ -40,6 +45,33 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
       _activeDocument = value;
       PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActiveDocument)));
+    }
+  }
+
+  public async Task OpenFileAsync(string path)
+  {
+    if (string.IsNullOrWhiteSpace(path))
+    {
+      return;
+    }
+
+    var fullPath = Path.GetFullPath(path);
+
+    try
+    {
+      var content = await _fileReader.ReadTextAsync(fullPath);
+      var document = _parser.Parse(content);
+      OpenOrActivateDocument(fullPath, Path.GetFileName(fullPath), document);
+    }
+    catch (Exception ex)
+    {
+      var errorDocument = new MarkdownDocumentModel([
+        new MarkdownParagraphBlock([
+          new MarkdownTextInline($"File could not be opened: {ex.Message}")
+        ])
+      ]);
+
+      OpenOrActivateDocument(fullPath, Path.GetFileName(fullPath), errorDocument);
     }
   }
 
