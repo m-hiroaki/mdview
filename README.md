@@ -100,6 +100,15 @@ scripts/publish.sh win-arm64
 
 ZIP は `artifacts/mdview-<RID>.zip` に作成されます。macOS `.app` バンドルとインストーラーは作成しません。
 
+Native AOT を検証・有効化する場合は、最後に `--aot` を指定します。通常の publish では AOT は有効になりません。
+
+```sh
+scripts/publish.sh osx-arm64 artifacts/aot --aot
+scripts/publish.sh win-x64 artifacts/aot --aot
+```
+
+`--aot` 指定時は `PublishAot=true` と `InvariantGlobalization=true` を MSBuild に渡します。AvaloniaEdit / TextMate を含むため、各 RID で publish 後に起動確認を行ってください。
+
 ## 主な依存関係
 
 - [Avalonia](https://github.com/AvaloniaUI/Avalonia): Windows / macOS 対応のネイティブ UI（MIT）
