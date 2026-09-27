@@ -193,11 +193,19 @@
 
 ### Phase 10 — ファイル関連付け
 
-- [ ] Windows/macOS の関連付け方法と配布形態を調査し、OS 固有処理を Infrastructure に隔離する。
+- [x] Windows/macOS の関連付け方法と配布形態を調査し、OS 固有処理を Infrastructure に隔離する。
 - [ ] ユーザーへ明示的に確認し、承認なしに既定アプリを変更しない。
-- [ ] OS ごとの処理を可能な範囲で検証する。
+- [x] OS ごとの処理を可能な範囲で検証する。
 
 **完了条件:** ユーザー承認を前提に関連付けでき、OS 固有 API が UI/Core に漏れていない。
+
+**進行状況（2026-09-27）:**
+
+- `IFileAssociationService` を Application に追加し、OS 固有処理を Infrastructure の `FileAssociationService` に隔離した。
+- Windows ではユーザー単位の `HKCU` に `.md`、`.markdown`、`.mdown` の関連付けを書き込む実装を用意した。呼び出し側が明示的に実行しない限り変更は発生しない。
+- macOS では未署名・未パッケージの実行ファイルから既定アプリを安全に変更する処理を追加せず、現時点では未対応として扱う。
+- Infrastructure テストで macOS 上の関連付け処理が変更を行わないことを確認した。
+- ユーザー確認ダイアログと macOS の配布用 `.app` / Launch Services 登録は未完了であり、Phase 11 の配布形態確定後に続ける。
 
 ### Phase 11 — 品質確認・CI・配布
 
