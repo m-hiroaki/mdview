@@ -223,6 +223,7 @@
 - `.github/workflows/ci.yml` に macOS / Windows の Release Build/Test を追加した。
 - `scripts/publish.sh` に `osx-arm64`、`osx-x64`、`win-x64`、`win-arm64` 向け self-contained publish と ZIP 作成を追加した。
 - `scripts/publish.sh` に任意の `--aot` オプションを追加し、Native AOT publish 時は `PublishAot=true` と `InvariantGlobalization=true` を指定するようにした。macOS arm64 でネイティブ実行ファイルの生成を確認した。
+- `scripts/publish.ps1` を追加し、Windows PowerShell から通常 publish と `-Aot` publish を実行できるようにした。
 - `Microsoft.Testing.Extensions.CodeCoverage` と `scripts/coverage.sh` / `scripts/coverage.ps1` を追加し、macOS / Windows でテストカバレッジを Cobertura XML として出力できるようにした。
 - `dotnet-reportgenerator-globaltool` を追加し、`coverage/report/index.html` で全体・ファイル・クラス・メソッド・行単位のカバレッジを可視化できるようにした。
 - Release Build は成功し、`dotnet test mdview.sln --configuration Release --no-restore` は 28 件成功、失敗 0 だった。

@@ -100,6 +100,13 @@ scripts/publish.sh win-arm64
 
 ZIP は `artifacts/mdview-<RID>.zip` に作成されます。macOS `.app` バンドルとインストーラーは作成しません。
 
+Windows PowerShell では、`publish.ps1` を使用できます。
+
+```powershell
+.\scripts\publish.ps1 win-x64
+.\scripts\publish.ps1 win-arm64
+```
+
 Native AOT を検証・有効化する場合は、最後に `--aot` を指定します。通常の publish では AOT は有効になりません。
 
 ```sh
@@ -108,6 +115,12 @@ scripts/publish.sh win-x64 artifacts/aot --aot
 ```
 
 `--aot` 指定時は `PublishAot=true` と `InvariantGlobalization=true` を MSBuild に渡します。AvaloniaEdit / TextMate を含むため、各 RID で publish 後に起動確認を行ってください。
+
+Windows PowerShell では次のように指定します。
+
+```powershell
+.\scripts\publish.ps1 win-x64 artifacts\aot -Aot
+```
 
 ## 主な依存関係
 
