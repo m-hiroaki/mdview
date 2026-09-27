@@ -3,3 +3,5 @@
 **/TestResults/
 .vs/
 .DS_Store
+
+.fake
