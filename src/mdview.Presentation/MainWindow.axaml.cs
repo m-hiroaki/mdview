@@ -17,6 +17,9 @@ public partial class MainWindow : Window
         ApplyZoom();
 
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
+        DragDrop.SetAllowDrop(this, true);
+        DragDrop.AddDragOverHandler(this, OnDragOver);
+        DragDrop.AddDropHandler(this, OnDrop);
 
         if (startupPaths is not null)
         {
@@ -90,6 +93,39 @@ public partial class MainWindow : Window
             }
         }
     }
+
+    private void OnDragOver(object? sender, DragEventArgs e)
+    {
+        var path = GetDroppedMarkdownPath(e);
+        e.DragEffects = path is null ? DragDropEffects.None : DragDropEffects.Copy;
+        e.Handled = true;
+    }
+
+    private async void OnDrop(object? sender, DragEventArgs e)
+    {
+        var path = GetDroppedMarkdownPath(e);
+        e.Handled = true;
+
+        if (path is not null)
+        {
+            await OpenFileAsync(path);
+        }
+    }
+
+    private static string? GetDroppedMarkdownPath(DragEventArgs e)
+    {
+        var storageItem = e.DataTransfer.TryGetFiles()?.FirstOrDefault();
+        var path = storageItem?.TryGetLocalPath();
+
+        return !string.IsNullOrWhiteSpace(path) && IsMarkdownPath(path)
+            ? path
+            : null;
+    }
+
+    private static bool IsMarkdownPath(string path) =>
+        string.Equals(Path.GetExtension(path), ".md", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(Path.GetExtension(path), ".markdown", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(Path.GetExtension(path), ".mdown", StringComparison.OrdinalIgnoreCase);
 
     private async void OnKeyDown(object? sender, KeyEventArgs e)
     {
