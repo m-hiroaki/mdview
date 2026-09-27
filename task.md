@@ -177,7 +177,7 @@
 ### Phase 9 — 検索と Zoom
 
 - [x] `Ctrl/Cmd + F` で検索 UI を表示し、入力欄へフォーカスする。
-- [ ] 一致箇所のハイライト、現在位置/総件数、前後移動、閉じるボタン、`Esc` を実装する。
+- [x] 一致箇所のハイライト、現在位置/総件数、前後移動、閉じるボタン、`Esc` を実装する。
 - [x] `Ctrl/Cmd + +` と `Ctrl/Cmd + -` で文書表示を拡大・縮小する。
 - [x] Zoom の最小値・最大値を設ける。
 - [x] Search と Zoom の状態・境界条件をテストする。
@@ -188,7 +188,7 @@
 
 - `MarkdownSearchState` と `MarkdownZoomState` を追加し、検索一致数、前後移動、Zoom の境界値を Application 層で管理するようにした。
 - `Ctrl/Cmd + F`、Enter / Shift+Enter、前後ボタン、Esc、`Ctrl/Cmd + +`、`Ctrl/Cmd + -` を MainWindow に接続した。
-- 検索結果の文書内ハイライトは未実装であり、次の作業で描画処理に組み込む。
+- 検索クエリの変更を各 Markdown ブロックへ反映し、一致文字列を背景色付きで表示するようにした。
 - `dotnet test mdview.sln --no-restore` で 27 件成功、失敗 0 を確認した。
 
 ### Phase 10 — ファイル関連付け

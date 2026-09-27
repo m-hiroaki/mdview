@@ -15,14 +15,15 @@ internal static class MarkdownBlockRenderer
   private static readonly IBrush SubtleBorder = new SolidColorBrush(Color.Parse("#454545"));
   private static readonly IBrush LinkForeground = new SolidColorBrush(Color.Parse("#77BDFB"));
   private static readonly IBrush InlineCodeForeground = new SolidColorBrush(Color.Parse("#E6B673"));
+  private static readonly IBrush SearchHighlight = new SolidColorBrush(Color.Parse("#806B2A"));
 
-  public static Control Render(MarkdownBlock block, string? currentMarkdownPath = null) => block switch
+  public static Control Render(MarkdownBlock block, string? currentMarkdownPath = null, string? searchQuery = null) => block switch
   {
-    MarkdownHeadingBlock heading => RenderHeading(heading, currentMarkdownPath),
-    MarkdownParagraphBlock paragraph => RenderParagraph(paragraph, currentMarkdownPath),
+    MarkdownHeadingBlock heading => RenderHeading(heading, currentMarkdownPath, searchQuery),
+    MarkdownParagraphBlock paragraph => RenderParagraph(paragraph, currentMarkdownPath, searchQuery),
     MarkdownCodeBlock code => new MarkdownCodeBlockView(code),
-    MarkdownListBlock list => RenderList(list, currentMarkdownPath),
-    MarkdownQuoteBlock quote => RenderQuote(quote, currentMarkdownPath),
+    MarkdownListBlock list => RenderList(list, currentMarkdownPath, searchQuery),
+    MarkdownQuoteBlock quote => RenderQuote(quote, currentMarkdownPath, searchQuery),
     MarkdownTableBlock table => RenderTable(table),
     MarkdownThematicBreakBlock => new Border
     {
@@ -34,7 +35,7 @@ internal static class MarkdownBlockRenderer
     _ => RenderText(string.Empty)
   };
 
-  private static Control RenderHeading(MarkdownHeadingBlock heading, string? currentMarkdownPath)
+  private static Control RenderHeading(MarkdownHeadingBlock heading, string? currentMarkdownPath, string? searchQuery)
   {
     var fontSize = heading.Level switch
     {
@@ -55,13 +56,13 @@ internal static class MarkdownBlockRenderer
 
     foreach (var inline in heading.Inlines)
     {
-      panel.Children.Add(CreateInlineControl(inline, currentMarkdownPath, fontSize, FontWeight.Bold));
+      panel.Children.Add(CreateInlineControl(inline, currentMarkdownPath, fontSize, FontWeight.Bold, searchQuery));
     }
 
     return panel;
   }
 
-  private static Control RenderParagraph(MarkdownParagraphBlock paragraph, string? currentMarkdownPath)
+  private static Control RenderParagraph(MarkdownParagraphBlock paragraph, string? currentMarkdownPath, string? searchQuery)
   {
     var panel = new WrapPanel
     {
@@ -71,13 +72,13 @@ internal static class MarkdownBlockRenderer
 
     foreach (var inline in paragraph.Inlines)
     {
-      panel.Children.Add(CreateInlineControl(inline, currentMarkdownPath, 16, FontWeight.Normal));
+      panel.Children.Add(CreateInlineControl(inline, currentMarkdownPath, 16, FontWeight.Normal, searchQuery));
     }
 
     return panel;
   }
 
-  private static Control RenderList(MarkdownListBlock list, string? currentMarkdownPath)
+  private static Control RenderList(MarkdownListBlock list, string? currentMarkdownPath, string? searchQuery)
   {
     var panel = new StackPanel
     {
@@ -106,7 +107,7 @@ internal static class MarkdownBlockRenderer
       var contents = new StackPanel { Spacing = 5 };
       foreach (var child in item.Blocks)
       {
-        contents.Children.Add(Render(child, currentMarkdownPath));
+        contents.Children.Add(Render(child, currentMarkdownPath, searchQuery));
       }
 
       Grid.SetColumn(contents, 1);
@@ -117,12 +118,12 @@ internal static class MarkdownBlockRenderer
     return panel;
   }
 
-  private static Control RenderQuote(MarkdownQuoteBlock quote, string? currentMarkdownPath)
+  private static Control RenderQuote(MarkdownQuoteBlock quote, string? currentMarkdownPath, string? searchQuery)
   {
     var contents = new StackPanel { Spacing = 4 };
     foreach (var block in quote.Blocks)
     {
-      contents.Children.Add(Render(block, currentMarkdownPath));
+      contents.Children.Add(Render(block, currentMarkdownPath, searchQuery));
     }
 
     return new Border
@@ -188,17 +189,11 @@ internal static class MarkdownBlockRenderer
     };
   }
 
-  private static Control CreateInlineControl(MarkdownInline inline, string? currentMarkdownPath, double fontSize, FontWeight fontWeight)
+  private static Control CreateInlineControl(MarkdownInline inline, string? currentMarkdownPath, double fontSize, FontWeight fontWeight, string? searchQuery)
   {
     return inline switch
     {
-      MarkdownTextInline literal => new TextBlock
-      {
-        Text = literal.Text,
-        FontSize = fontSize,
-        FontWeight = fontWeight,
-        TextWrapping = TextWrapping.Wrap
-      },
+      MarkdownTextInline literal => CreateHighlightedText(literal.Text, fontSize, fontWeight, searchQuery),
       MarkdownCodeInline code => new Border
       {
         Padding = new Thickness(4, 2),
@@ -235,7 +230,7 @@ internal static class MarkdownBlockRenderer
         TextDecorations = TextDecorations.Strikethrough,
         TextWrapping = TextWrapping.Wrap
       },
-      MarkdownLinkInline link => CreateLinkButton(link, currentMarkdownPath, fontSize, fontWeight),
+      MarkdownLinkInline link => CreateLinkButton(link, currentMarkdownPath, fontSize, fontWeight, searchQuery),
       MarkdownImageInline image => CreateImageControl(image, currentMarkdownPath, fontSize),
       MarkdownBreakInline => new TextBlock { Text = " ", FontSize = fontSize },
       MarkdownTaskListInline task => new TextBlock
@@ -247,6 +242,45 @@ internal static class MarkdownBlockRenderer
       },
       _ => new TextBlock { Text = string.Empty }
     };
+  }
+
+  private static TextBlock CreateHighlightedText(string text, double fontSize, FontWeight fontWeight, string? searchQuery)
+  {
+    var block = new TextBlock
+    {
+      FontSize = fontSize,
+      FontWeight = fontWeight,
+      TextWrapping = TextWrapping.Wrap
+    };
+
+    if (string.IsNullOrEmpty(searchQuery))
+    {
+      block.Text = text;
+      return block;
+    }
+
+    var inlines = new InlineCollection();
+    var offset = 0;
+    while (offset < text.Length)
+    {
+      var match = text.IndexOf(searchQuery, offset, StringComparison.CurrentCultureIgnoreCase);
+      if (match < 0)
+      {
+        inlines.Add(new Run(text[offset..]));
+        break;
+      }
+
+      if (match > offset)
+      {
+        inlines.Add(new Run(text[offset..match]));
+      }
+
+      inlines.Add(new Run(text.Substring(match, searchQuery.Length)) { Background = SearchHighlight });
+      offset = match + searchQuery.Length;
+    }
+
+    block.Inlines = inlines;
+    return block;
   }
 
   private static TextBlock BuildInlineTextBlock(IReadOnlyList<MarkdownInline> inlines, double fontSize, FontWeight fontWeight)
@@ -312,13 +346,12 @@ internal static class MarkdownBlockRenderer
     return collection;
   }
 
-  private static Button CreateLinkButton(MarkdownLinkInline link, string? currentMarkdownPath, double fontSize, FontWeight fontWeight)
+  private static Button CreateLinkButton(MarkdownLinkInline link, string? currentMarkdownPath, double fontSize, FontWeight fontWeight, string? searchQuery)
   {
     var button = new Button
     {
       Content = new TextBlock
       {
-        Text = GetPlainText(link.Inlines),
         FontSize = fontSize,
         FontWeight = fontWeight,
         Foreground = LinkForeground,
@@ -329,6 +362,10 @@ internal static class MarkdownBlockRenderer
       Padding = new Thickness(0, 0, 2, 0),
       Cursor = new Cursor(StandardCursorType.Hand)
     };
+
+    button.Content = CreateHighlightedText(GetPlainText(link.Inlines), fontSize, fontWeight, searchQuery);
+    ((TextBlock)button.Content).Foreground = LinkForeground;
+    ((TextBlock)button.Content).TextDecorations = TextDecorations.Underline;
 
     button.Click += (_, _) => MarkdownLinkHandler.Open(currentMarkdownPath, link.Destination);
     return button;
