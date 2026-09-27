@@ -62,12 +62,12 @@ internal static class MarkdownBlockRenderer
     return panel;
   }
 
-  private static Control RenderParagraph(MarkdownParagraphBlock paragraph, string? currentMarkdownPath, string? searchQuery)
+  private static Control RenderParagraph(MarkdownParagraphBlock paragraph, string? currentMarkdownPath, string? searchQuery, bool compact = false)
   {
     var panel = new WrapPanel
     {
       Orientation = Orientation.Horizontal,
-      Margin = new Thickness(0, 4, 0, 10)
+      Margin = compact ? new Thickness(0, 0, 0, 2) : new Thickness(0, 4, 0, 10)
     };
 
     foreach (var inline in paragraph.Inlines)
@@ -82,7 +82,7 @@ internal static class MarkdownBlockRenderer
   {
     var panel = new StackPanel
     {
-      Spacing = 5,
+      Spacing = 1,
       Margin = new Thickness(24, 4, 0, 10)
     };
     var orderedNumber = list.Start;
@@ -104,10 +104,12 @@ internal static class MarkdownBlockRenderer
         VerticalAlignment = VerticalAlignment.Top
       });
 
-      var contents = new StackPanel { Spacing = 5 };
+      var contents = new StackPanel { Spacing = 1 };
       foreach (var child in item.Blocks)
       {
-        contents.Children.Add(Render(child, currentMarkdownPath, searchQuery));
+        contents.Children.Add(child is MarkdownParagraphBlock paragraph
+          ? RenderParagraph(paragraph, currentMarkdownPath, searchQuery, compact: true)
+          : Render(child, currentMarkdownPath, searchQuery));
       }
 
       Grid.SetColumn(contents, 1);
@@ -198,12 +200,14 @@ internal static class MarkdownBlockRenderer
       {
         Padding = new Thickness(4, 2),
         Margin = new Thickness(0, 0, 4, 0),
+        VerticalAlignment = VerticalAlignment.Center,
         Background = new SolidColorBrush(Color.Parse("#2A2A2A")),
         Child = new TextBlock
         {
           Text = code.Code,
           FontFamily = new FontFamily("monospace"),
           FontSize = fontSize - 2,
+          VerticalAlignment = VerticalAlignment.Center,
           Foreground = InlineCodeForeground
         }
       },

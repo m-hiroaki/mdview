@@ -16,7 +16,9 @@
                 <TabControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:DocumentTabViewModel">
                         <Grid ColumnDefinitions="*,Auto" MinWidth="120">
-                            <TextBlock VerticalAlignment="Center" Text="{Binding Title}" />
+                            <TextBlock VerticalAlignment="Center"
+                                       FontSize="13"
+                                       Text="{Binding Title}" />
                             <Button Grid.Column="1"
                                     Width="20"
                                     Height="20"
@@ -27,6 +29,11 @@
                         </Grid>
                     </DataTemplate>
                 </TabControl.ItemTemplate>
+                <TabControl.ContentTemplate>
+                    <DataTemplate>
+                        <Border IsVisible="False" />
+                    </DataTemplate>
+                </TabControl.ContentTemplate>
             </TabControl>
         </Border>
         <Border Grid.Row="1"
