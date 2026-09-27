@@ -10,15 +10,26 @@
 
 ### Phase 0 — リポジトリと開発環境の確認
 
-- [ ] Git の状態、既存ファイル、既存プロジェクトの有無を確認する。
-- [ ] macOS の開発環境と Windows/macOS 向け検証・配布方法を確認する。
-- [ ] 実装開始時点で利用可能な最新の .NET LTS と対応する Avalonia の構成を確認する。
-- [ ] 初期スコープと、外部 NuGet パッケージが必要な場合の理由・影響を整理する。
+- [x] Git の状態、既存ファイル、既存プロジェクトの有無を確認する。
+- [x] macOS の開発環境と Windows/macOS 向け検証・配布方法を確認する。
+- [x] 実装開始時点で利用可能な最新の .NET LTS と対応する Avalonia の構成を確認する。
+- [x] 初期スコープと、外部 NuGet パッケージが必要な場合の理由・影響を整理する。
 
 **完了条件:** 現在のリポジトリ状態、使用する SDK、初期の技術選択が明確になっている。
 
+**調査結果（2026-09-27）:**
+
+- リポジトリは `main` ブランチで調査時点の作業ツリーは clean。アプリの Solution / project はまだなく、ルートには `AGENTS.md` と本計画書がある。
+- 開発機は Apple Silicon の macOS 27.0。`.NET SDK 10.0.400` と .NET runtime `10.0.11` が導入済みで、Avalonia の Desktop / MVVM テンプレートも利用できる。
+- .NET 10 が現行 LTS。Microsoft のダウンロード情報では最新 SDK は `10.0.401`、runtime は `10.0.12` のため、Phase 1 の開始前に SDK/runtime を最新 servicing に更新して SDK バージョンを固定する。
+- Avalonia は Windows/macOS 対応のクロスプラットフォーム UI として要件に合致する。調査時点の最新安定版 `12.1.3` は MIT ライセンスで、Avalonia 12 は直近リリースのため、採用時にテンプレートからの生成・Build・macOS 起動を先に確認する。Windows の実機確認は GitHub Actions の Windows runner を利用する。
+- 初期依存候補は Avalonia Desktop（ネイティブ UI に必須、MIT）、Markdig `1.4.0`（要件指定の GFM Parser、BSD-2-Clause）、xUnit v3（指定テスト基盤、Apache-2.0）。Markdig は必要な GFM 拡張だけを有効にし、初期対象外の構文を不用意に増やさない。
+- Syntax Highlighting は要件上必要だが、ネイティブ描画・依存関係・ライセンス・配布サイズを Phase 5 で比較して選ぶ。現時点では追加パッケージを決めない。MVVM Toolkit や DI パッケージも初期導入せず、必要性が確認された場合のみ検討する。
+- 自己完結型 ZIP を基本とし、WebView / Chromium / ネットワーク機能は導入しない。各パッケージの実際の Publish サイズは配布工程で測定する。
+
 ### Phase 1 — Solution と最小構成
 
+- [ ] .NET 10 の SDK/runtime を最新 servicing に更新し、使用する SDK をリポジトリで固定する。
 - [ ] `src/` に Domain、Application、Infrastructure、Presentation の各プロジェクトを作成する。
 - [ ] `tests/` に Domain、Application、Infrastructure の xUnit テストプロジェクトを作成する。
 - [ ] 依存方向を `Presentation → Application → Domain` とし、Infrastructure は内側で定義する必要な抽象化のみ実装する。
