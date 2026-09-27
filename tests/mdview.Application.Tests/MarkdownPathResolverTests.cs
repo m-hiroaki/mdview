@@ -25,6 +25,16 @@ public class MarkdownPathResolverTests
   }
 
   [Fact]
+  public void ResolveDocumentLink_PreservesFragmentWhenResolvingRelativeMarkdownFiles()
+  {
+    var resolver = new MarkdownPathResolver();
+
+    var resolved = resolver.ResolveDocumentLink("/Users/example/docs/guide.md", "../README.md#start");
+
+    Assert.Equal("/Users/example/README.md#start", resolved);
+  }
+
+  [Fact]
   public void ResolveDocumentLink_LeavesExternalUrlAndAnchorUnchanged()
   {
     var resolver = new MarkdownPathResolver();

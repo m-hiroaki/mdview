@@ -4,8 +4,7 @@
         xmlns:views="using:mdview.Presentation.Views"
         x:Class="mdview.Presentation.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Title="mdview"
-        AllowDrop="True">
+        Title="mdview">
     <Grid RowDefinitions="Auto,*">
         <Border Grid.Row="0"
                 MinHeight="38"

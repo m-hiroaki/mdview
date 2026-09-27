@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using mdview.Presentation.ViewModels;
 
 namespace mdview.Presentation;
@@ -14,8 +15,6 @@ public partial class MainWindow : Window
         DataContext = new MainWindowViewModel();
 
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
-        AddHandler(DragDrop.DropEvent, OnDrop, RoutingStrategies.Tunnel);
-        DragDrop.SetAllowDrop(this, true);
 
         if (startupPaths is not null)
         {
@@ -23,6 +22,14 @@ public partial class MainWindow : Window
             {
                 _ = OpenFileAsync(path);
             }
+        }
+    }
+
+    public void ScrollToAnchor(string anchor)
+    {
+        if (string.IsNullOrWhiteSpace(anchor))
+        {
+            return;
         }
     }
 
@@ -43,19 +50,25 @@ public partial class MainWindow : Window
 
     private async Task OpenFileDialogAsync()
     {
-        var dialog = new OpenFileDialog
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             AllowMultiple = false,
-            Filters =
+            FileTypeFilter =
             [
-                new FileDialogFilter { Name = "Markdown", Extensions = ["md", "markdown", "mdown"] }
+                new FilePickerFileType("Markdown")
+                {
+                    Patterns = ["*.md", "*.markdown", "*.mdown"]
+                }
             ]
-        };
+        });
 
-        var result = await dialog.ShowAsync(this);
-        if (result is not null && result.Length > 0)
+        if (files.Count > 0)
         {
-            await OpenFileAsync(result[0]);
+            var localPath = files[0].TryGetLocalPath();
+            if (!string.IsNullOrWhiteSpace(localPath))
+            {
+                await OpenFileAsync(localPath);
+            }
         }
     }
 
@@ -67,35 +80,6 @@ public partial class MainWindow : Window
             e.Handled = true;
             await OpenFileDialogAsync();
             return;
-        }
-
-        if (e.Key == Key.D && (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta)))
-        {
-            e.Handled = true;
-            return;
-        }
-    }
-
-    private async void OnDrop(object? sender, DragEventArgs e)
-    {
-        if (e.Data is null)
-        {
-            return;
-        }
-
-        var files = e.Data.GetFiles();
-        if (files is null)
-        {
-            return;
-        }
-
-        foreach (var file in files)
-        {
-            var path = file.TryGetLocalPath();
-            if (!string.IsNullOrWhiteSpace(path))
-            {
-                await OpenFileAsync(path);
-            }
         }
     }
 

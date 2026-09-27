@@ -1,5 +1,10 @@
 {
   "chat.tools.terminal.autoApprove": {
-    "dotnet test": true
+    "dotnet test": true,
+    "dotnet build": true,
+    "/^python - <<'PY'\nfrom pathlib import Path\nbase=Path\\('/Users/hiroaki/\\.nuget/packages/avalonia/12\\.1\\.3'\\)\nfor p in base\\.rglob\\('\\*\\.xml'\\):\n    try:\n        txt=p\\.read_text\\(errors='ignore'\\)\n    except Exception:\n        continue\n    if 'DragEventArgs' in txt or 'OpenFilePickerAsync' in txt or 'FilePickerOpenOptions' in txt:\n        print\\(p\\)\n        for term in \\['DragEventArgs','OpenFilePickerAsync','FilePickerOpenOptions','IStorageProvider'\\]:\n            idx=txt\\.find\\(term\\)\n            if idx!=-1:\n                start=max\\(0, idx-200\\)\n                end=min\\(len\\(txt\\), idx\\+600\\)\n                print\\(txt\\[start:end\\]\\)\n                print\\('---'\\)\n        break\nPY$/": {
+      "approve": true,
+      "matchCommandLine": true
+    }
   }
 }
