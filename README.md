@@ -58,6 +58,8 @@ NuGet restore を省略する場合:
 
 Native AOT を使わない通常のビルドだけであれば C++ toolchain は必須ではありませんが、`win-arm64` の Native AOT publish には必要です。スクリプトはリポジトリの `global.json` にある SDK バージョンも確認します。
 
+対象 SDK、Git、Visual Studio Build Tools が既にインストール済みの場合、スクリプトはそれぞれの `winget install` をスキップします。`0x8A15002B` などの winget 終了コードが表示される場合は、まず `dotnet --list-sdks` で `global.json` の `10.0.401` が存在するか確認してください。
+
 ## テスト
 
 すべてのテストを実行します。テスト時の .NET CLI / Microsoft Testing Platform のテレメトリを無効にする例です。

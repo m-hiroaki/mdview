@@ -19,6 +19,12 @@ function Install-WingetPackage {
         [string]$Override
     )
 
+    $installed = & winget list --id $Id --exact --disable-interactivity 2>$null | Out-String
+    if ($LASTEXITCODE -eq 0 -and $installed -match [regex]::Escape($Id)) {
+        Write-Host "$Id is already installed; skipping winget install."
+        return
+    }
+
     $arguments = @(
         "install",
         "--id", $Id,
@@ -39,10 +45,33 @@ function Install-WingetPackage {
     }
 }
 
+function Get-RequiredSdkVersion {
+    $repoRoot = Split-Path -Parent $PSScriptRoot
+    $globalJsonPath = Join-Path $repoRoot "global.json"
+    return (Get-Content $globalJsonPath -Raw | ConvertFrom-Json).sdk.version
+}
+
+function Test-DotNetSdkVersion {
+    param([Parameter(Mandatory = $true)][string]$Version)
+
+    if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
+        return $false
+    }
+
+    $installedSdks = @(dotnet --list-sdks)
+    return $installedSdks -match [regex]::Escape($Version)
+}
+
 Assert-Command "winget"
 
 # Required for restore, build, test, and the pinned SDK in global.json.
-Install-WingetPackage "Microsoft.DotNet.SDK.10"
+$requiredSdk = Get-RequiredSdkVersion
+if (Test-DotNetSdkVersion $requiredSdk) {
+    Write-Host ".NET SDK $requiredSdk is already installed; skipping winget install."
+}
+else {
+    Install-WingetPackage "Microsoft.DotNet.SDK.10"
+}
 
 # Required for source checkout and normal repository maintenance.
 Install-WingetPackage "Git.Git"
@@ -62,10 +91,9 @@ Install-WingetPackage "Microsoft.VisualStudio.2022.BuildTools" $buildToolsOverri
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Push-Location $repoRoot
 try {
-    $requiredSdk = (Get-Content global.json -Raw | ConvertFrom-Json).sdk.version
     $installedSdks = @(dotnet --list-sdks)
     if (-not ($installedSdks -match [regex]::Escape($requiredSdk))) {
-        throw ".NET SDK $requiredSdk from global.json was not found after installation. Installed SDKs: $($installedSdks -join '; ')"
+        throw ".NET SDK $requiredSdk from global.json was not found. Winget may not publish that SDK patch for this architecture yet. Installed SDKs: $($installedSdks -join '; '). Install the exact SDK from https://dotnet.microsoft.com/download/dotnet/10.0 and run this script again."
     }
 
     if (-not $SkipRestore) {
