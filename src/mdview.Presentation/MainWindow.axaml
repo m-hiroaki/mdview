@@ -1,0 +1,30 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:mdview.Presentation.ViewModels"
+        x:Class="mdview.Presentation.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="mdview">
+    <Grid RowDefinitions="Auto,*">
+        <Border Grid.Row="0"
+                MinHeight="38"
+                Padding="8,0"
+                BorderBrush="#333333"
+                BorderThickness="0,0,0,1">
+            <ItemsControl ItemsSource="{Binding Tabs}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:DocumentTabViewModel">
+                        <Border Padding="12,8" Margin="2,2,0,0" CornerRadius="6,6,0,0">
+                            <TextBlock Text="{Binding Title}" />
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Border>
+        <ScrollViewer Grid.Row="1" />
+    </Grid>
+</Window>

@@ -20,8 +20,8 @@
 **調査結果（2026-09-27）:**
 
 - リポジトリは `main` ブランチで調査時点の作業ツリーは clean。アプリの Solution / project はまだなく、ルートには `AGENTS.md` と本計画書がある。
-- 開発機は Apple Silicon の macOS 27.0。`.NET SDK 10.0.400` と .NET runtime `10.0.11` が導入済みで、Avalonia の Desktop / MVVM テンプレートも利用できる。
-- .NET 10 が現行 LTS。Microsoft のダウンロード情報では最新 SDK は `10.0.401`、runtime は `10.0.12` のため、Phase 1 の開始前に SDK/runtime を最新 servicing に更新して SDK バージョンを固定する。
+- 開発機は Apple Silicon の macOS 27.0。調査時点では `.NET SDK 10.0.400` と .NET runtime `10.0.11` が導入済みで、Avalonia の Desktop / MVVM テンプレートも利用できた。
+- .NET 10 が現行 LTS。調査時点の最新は SDK `10.0.401`、runtime `10.0.12`。Phase 1 で更新・固定済み。
 - Avalonia は Windows/macOS 対応のクロスプラットフォーム UI として要件に合致する。調査時点の最新安定版 `12.1.3` は MIT ライセンスで、Avalonia 12 は直近リリースのため、採用時にテンプレートからの生成・Build・macOS 起動を先に確認する。Windows の実機確認は GitHub Actions の Windows runner を利用する。
 - 初期依存候補は Avalonia Desktop（ネイティブ UI に必須、MIT）、Markdig `1.4.0`（要件指定の GFM Parser、BSD-2-Clause）、xUnit v3（指定テスト基盤、Apache-2.0）。Markdig は必要な GFM 拡張だけを有効にし、初期対象外の構文を不用意に増やさない。
 - Syntax Highlighting は要件上必要だが、ネイティブ描画・依存関係・ライセンス・配布サイズを Phase 5 で比較して選ぶ。現時点では追加パッケージを決めない。MVVM Toolkit や DI パッケージも初期導入せず、必要性が確認された場合のみ検討する。
@@ -29,24 +29,39 @@
 
 ### Phase 1 — Solution と最小構成
 
-- [ ] .NET 10 の SDK/runtime を最新 servicing に更新し、使用する SDK をリポジトリで固定する。
-- [ ] `src/` に Domain、Application、Infrastructure、Presentation の各プロジェクトを作成する。
-- [ ] `tests/` に Domain、Application、Infrastructure の xUnit テストプロジェクトを作成する。
-- [ ] 依存方向を `Presentation → Application → Domain` とし、Infrastructure は内側で定義する必要な抽象化のみ実装する。
-- [ ] 必要最小限の Solution、共通ビルド設定、`.gitignore` を整える。
-- [ ] 空の状態で Solution 全体の Build と Test を実行する。
+- [x] .NET 10 の SDK/runtime を最新 servicing に更新し、使用する SDK をリポジトリで固定する。
+- [x] `src/` に Domain、Application、Infrastructure、Presentation の各プロジェクトを作成する。
+- [x] `tests/` に Domain、Application、Infrastructure の xUnit テストプロジェクトを作成する。
+- [x] 依存方向を `Presentation → Application → Domain` とし、Infrastructure は内側で定義する必要な抽象化のみ実装する。
+- [x] 必要最小限の Solution、共通ビルド設定、`.gitignore` を整える。
+- [x] 空の状態で Solution 全体の Build と Test を実行する。
 
 **完了条件:** 構成が AGENTS.md に沿い、初期 Build/Test が成功する。
 
+**実施結果（2026-09-27）:**
+
+- .NET SDK `10.0.401` と runtime `10.0.12` を導入し、`global.json` で SDK を固定した。SDK 10 の `dotnet test` は既定で VSTest を使うため、同ファイルで xUnit v3 と互換性のある Microsoft.Testing.Platform を選択した。
+- `mdview.sln`、4つの本体プロジェクト、3つのテストプロジェクトを作成した。Presentation は次の Phase 2 で Avalonia Desktop アプリへ移行する最小クラスライブラリとして置いている。
+- Domain / Application / Infrastructure / Presentation の ProjectReference を設定し、共通の `net10.0` / Nullable / ImplicitUsings 設定と最小 `.gitignore` を追加した。
+- 各テストプロジェクトにテストランナーの起動確認を置き、Release Build 成功、テスト 3 件成功を確認した。テスト実行時は MTP のテレメトリをオプトアウトした。
+- 既存の Avalonia テンプレートは `12.1.1` だった。Phase 2 で `12.1.3` に更新し、同じバージョンのパッケージを採用した。
+
 ### Phase 2 — Avalonia の基本 UI
 
-- [ ] Presentation に Avalonia アプリを構築し、標準のネイティブ Title Bar を使う。
-- [ ] 常時ダークテーマと、タブ領域・Markdown 表示領域を持つ最小 UI を作る。
-- [ ] MVVM を導入し、View にビジネスロジックを置かない。
-- [ ] 固定ウィンドウサイズ、Welcome Screen、Toolbar、Sidebar などを追加しない。
-- [ ] macOS で起動し、基本レイアウトを確認する。
+- [x] Presentation に Avalonia アプリを構築し、標準のネイティブ Title Bar を使う。
+- [x] 常時ダークテーマと、タブ領域・Markdown 表示領域を持つ最小 UI を作る。
+- [x] MVVM を導入し、View にビジネスロジックを置かない。
+- [x] 固定ウィンドウサイズ、Welcome Screen、Toolbar、Sidebar などを追加しない。
+- [x] macOS で起動し、基本レイアウトを確認する。
 
 **完了条件:** 空のアプリが macOS で起動し、指定された簡素な構成を表示する。
+
+**実施結果（2026-09-27）:**
+
+- Avalonia 12.1.3 の Desktop テンプレートを使い、Presentation を実行可能なアプリにした。Fluent テーマを Dark に固定し、既定のネイティブ Window Title Bar を維持している。
+- MVVM の最小 ViewModel と空のタブコレクション、タブ行・スクロール可能な文書領域を用意した。空の起動画面に案内文などは表示しない。
+- システムフォントを使い、Inter フォント・診断サポートなどテンプレート由来の任意依存を除いた。追加した NuGet は Avalonia / Desktop / Fluent の3パッケージ（MIT）。
+- Release Build 成功、xUnit v3 テスト 3 件成功。`dotnet run` で macOS 起動プロセスが例外なく動作することを確認した。実行環境では画面キャプチャを取得できなかったため、レイアウトは XAML と起動状態で確認。
 
 ### Phase 3 — Domain / Application の基礎
 
@@ -131,7 +146,7 @@
 ### Phase 11 — 品質確認・CI・配布
 
 - [ ] Unit Test を追加・実行し、全プロジェクトの Build/Test を通す。
-- [ ] GitHub Actions にシンプルな Build/Test の CI を追加する。
+- [ ] GitHub Actions にシンプルな Build/Test の CI を追加し、テスト実行時は `TESTINGPLATFORM_TELEMETRY_OPTOUT=1` を設定する。
 - [ ] Windows と macOS の一般的な CPU アーキテクチャ向けに ZIP 配布物を作成できるようにする。インストーラーは作らない。
 - [ ] README に目的、対応 OS、機能、開発環境、Build/Test/Publish/配布方法、既知の制限を記載する。
 - [ ] 起動速度、アイドル時メモリ、スクロール、タブ切替、描画速度を確認し、問題があれば修正する。

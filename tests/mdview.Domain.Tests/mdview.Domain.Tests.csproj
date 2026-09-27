@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../../src/mdview.Domain/mdview.Domain.csproj" />
+  </ItemGroup>
+</Project>
