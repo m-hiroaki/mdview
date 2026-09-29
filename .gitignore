@@ -6,5 +6,6 @@ artifacts/
 .config/dotnet-tools.json.user
 .vs/
 .DS_Store
+.vscode/
 
 .fake
