@@ -149,6 +149,21 @@ public partial class MainWindow : Window
 
         var hasCommandModifier = e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta);
 
+        if (e.Key == Key.W && hasCommandModifier)
+        {
+            e.Handled = true;
+            if (DataContext is MainWindowViewModel closeViewModel && closeViewModel.ActiveTab is { } activeTab)
+            {
+                closeViewModel.CloseTab(activeTab);
+                if (closeViewModel.Tabs.Count == 0)
+                {
+                    Close();
+                }
+            }
+
+            return;
+        }
+
         if (e.Key == Key.Add || (e.Key == Key.OemPlus && hasCommandModifier))
         {
             if (DataContext is MainWindowViewModel zoomViewModel && hasCommandModifier)
