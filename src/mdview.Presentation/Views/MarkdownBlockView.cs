@@ -10,6 +10,10 @@ namespace mdview.Presentation.Views;
 public sealed class MarkdownBlockView : ContentControl
 {
   private MainWindowViewModel? _viewModel;
+  private MarkdownBlock? _renderedBlock;
+  private string? _renderedPath;
+  private string? _renderedQuery;
+  private mdview.Application.UseCases.MermaidDiagramService? _renderedDiagrams;
 
   protected override void OnDataContextChanged(EventArgs e)
   {
@@ -20,7 +24,7 @@ public sealed class MarkdownBlockView : ContentControl
   protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
   {
     base.OnAttachedToVisualTree(e);
-    _viewModel = (VisualRoot as Window)?.DataContext as MainWindowViewModel;
+    _viewModel = TopLevel.GetTopLevel(this)?.DataContext as MainWindowViewModel;
     if (_viewModel is not null)
     {
       _viewModel.PropertyChanged += OnViewModelPropertyChanged;
@@ -42,7 +46,7 @@ public sealed class MarkdownBlockView : ContentControl
 
   private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
   {
-    if (e.PropertyName == nameof(MainWindowViewModel.SearchQuery))
+    if (e.PropertyName == nameof(MainWindowViewModel.SearchQuery) && DataContext is not MarkdownMermaidBlock)
     {
       UpdateContent();
     }
@@ -53,12 +57,21 @@ public sealed class MarkdownBlockView : ContentControl
     if (DataContext is not MarkdownBlock block)
     {
       Content = null;
+      _renderedBlock = null;
       return;
     }
 
-    var viewModel = _viewModel ?? (VisualRoot as Window)?.DataContext as MainWindowViewModel;
+    var viewModel = _viewModel ?? TopLevel.GetTopLevel(this)?.DataContext as MainWindowViewModel;
     var currentMarkdownPath = viewModel?.ActiveTab?.FilePath;
+    var searchQuery = block is MarkdownMermaidBlock ? null : viewModel?.SearchQuery;
+    var diagrams = viewModel?.Diagrams;
+    if (ReferenceEquals(_renderedBlock, block) && _renderedPath == currentMarkdownPath &&
+        _renderedQuery == searchQuery && ReferenceEquals(_renderedDiagrams, diagrams)) return;
 
-    Content = MarkdownBlockRenderer.Render(block, currentMarkdownPath, viewModel?.SearchQuery);
+    Content = MarkdownBlockRenderer.Render(block, currentMarkdownPath, searchQuery, diagrams);
+    _renderedBlock = block;
+    _renderedPath = currentMarkdownPath;
+    _renderedQuery = searchQuery;
+    _renderedDiagrams = diagrams;
   }
 }

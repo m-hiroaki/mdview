@@ -347,4 +347,5 @@ macOS `.app` バンドル、Windows 実機確認、ファイル関連付けの�
 - Windows 実機での動作確認は未実施
 - ファイル関連付けのユーザー確認 UI は未実装
 - 起動速度、メモリ、長文描画の定量的な性能計測は未実施
-- Markdown 編集、LaTeX、Mermaid、WYSIWYG は対象外
+- Markdown 編集、LaTeX、WYSIWYG は対象外
+- Mermaid は macOS 先行で対応。詳細は [Mermaid 表示設計](mermaid-design.md) を参照

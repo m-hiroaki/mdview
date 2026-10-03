@@ -6,6 +6,8 @@
         x:DataType="vm:MainWindowViewModel"
         Title="mdview">
     <Grid RowDefinitions="Auto,Auto,*">
+        <Canvas x:Name="MermaidHost" Grid.Row="2" Width="1" Height="1"
+                HorizontalAlignment="Left" VerticalAlignment="Top" ClipToBounds="True" IsHitTestVisible="False" />
         <Border Grid.Row="0"
                 MinHeight="38"
                 Padding="8,0"
@@ -56,6 +58,7 @@
             </Grid>
         </Border>
         <ScrollViewer x:Name="DocumentScrollViewer" Grid.Row="2">
+            <LayoutTransformControl x:Name="DocumentZoom">
             <ItemsControl x:Name="DocumentContent"
                           ItemsSource="{Binding ActiveDocument.Blocks}"
                           Margin="18,12,18,20">
@@ -70,6 +73,7 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+            </LayoutTransformControl>
         </ScrollViewer>
     </Grid>
 </Window>

@@ -6,6 +6,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using mdview.Application.Models;
+using mdview.Application.UseCases;
 using System.Text;
 
 namespace mdview.Presentation.Views;
@@ -17,13 +18,14 @@ internal static class MarkdownBlockRenderer
   private static readonly IBrush InlineCodeForeground = new SolidColorBrush(Color.Parse("#E6B673"));
   private static readonly IBrush SearchHighlight = new SolidColorBrush(Color.Parse("#806B2A"));
 
-  public static Control Render(MarkdownBlock block, string? currentMarkdownPath = null, string? searchQuery = null) => block switch
+  public static Control Render(MarkdownBlock block, string? currentMarkdownPath = null, string? searchQuery = null, MermaidDiagramService? diagrams = null) => block switch
   {
     MarkdownHeadingBlock heading => RenderHeading(heading, currentMarkdownPath, searchQuery),
     MarkdownParagraphBlock paragraph => RenderParagraph(paragraph, currentMarkdownPath, searchQuery),
     MarkdownCodeBlock code => new MarkdownCodeBlockView(code),
-    MarkdownListBlock list => RenderList(list, currentMarkdownPath, searchQuery),
-    MarkdownQuoteBlock quote => RenderQuote(quote, currentMarkdownPath, searchQuery),
+    MarkdownMermaidBlock diagram => new MermaidDiagramView(diagram, diagrams),
+    MarkdownListBlock list => RenderList(list, currentMarkdownPath, searchQuery, diagrams),
+    MarkdownQuoteBlock quote => RenderQuote(quote, currentMarkdownPath, searchQuery, diagrams),
     MarkdownTableBlock table => RenderTable(table),
     MarkdownThematicBreakBlock => new Border
     {
@@ -78,7 +80,7 @@ internal static class MarkdownBlockRenderer
     return panel;
   }
 
-  private static Control RenderList(MarkdownListBlock list, string? currentMarkdownPath, string? searchQuery)
+  private static Control RenderList(MarkdownListBlock list, string? currentMarkdownPath, string? searchQuery, MermaidDiagramService? diagrams)
   {
     var panel = new StackPanel
     {
@@ -109,7 +111,7 @@ internal static class MarkdownBlockRenderer
       {
         contents.Children.Add(child is MarkdownParagraphBlock paragraph
           ? RenderParagraph(paragraph, currentMarkdownPath, searchQuery, compact: true)
-          : Render(child, currentMarkdownPath, searchQuery));
+          : Render(child, currentMarkdownPath, searchQuery, diagrams));
       }
 
       Grid.SetColumn(contents, 1);
@@ -120,12 +122,12 @@ internal static class MarkdownBlockRenderer
     return panel;
   }
 
-  private static Control RenderQuote(MarkdownQuoteBlock quote, string? currentMarkdownPath, string? searchQuery)
+  private static Control RenderQuote(MarkdownQuoteBlock quote, string? currentMarkdownPath, string? searchQuery, MermaidDiagramService? diagrams)
   {
     var contents = new StackPanel { Spacing = 4 };
     foreach (var block in quote.Blocks)
     {
-      contents.Children.Add(Render(block, currentMarkdownPath, searchQuery));
+      contents.Children.Add(Render(block, currentMarkdownPath, searchQuery, diagrams));
     }
 
     return new Border

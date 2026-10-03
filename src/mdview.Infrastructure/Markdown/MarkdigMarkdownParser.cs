@@ -29,7 +29,15 @@ public sealed class MarkdigMarkdownParser : IMarkdownParser
 
     var document = Markdig.Markdown.Parse(markdown, Pipeline);
     var anchors = new HashSet<string>(StringComparer.Ordinal);
-    return new MarkdownDocumentModel(ConvertBlocks(document, anchors));
+    char[]? searchText = null;
+    foreach (var code in document.Descendants<FencedCodeBlock>())
+    {
+      if (!string.Equals(code.Info?.ToString().Trim().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault(), "mermaid", StringComparison.OrdinalIgnoreCase)) continue;
+      searchText ??= markdown.ToCharArray();
+      for (var i = Math.Max(0, code.Span.Start); i <= code.Span.End && i < searchText.Length; i++)
+        if (searchText[i] is not '\n' and not '\r') searchText[i] = '\0';
+    }
+    return new MarkdownDocumentModel(ConvertBlocks(document, anchors)) { SearchText = searchText is null ? markdown : new string(searchText) };
   }
 
   private static IReadOnlyList<MarkdownBlock> ConvertBlocks(ContainerBlock container, HashSet<string> anchors)
@@ -64,6 +72,10 @@ public sealed class MarkdigMarkdownParser : IMarkdownParser
         {
           var info = fencedCode.Info?.ToString().Trim() ?? string.Empty;
           var language = info.Length == 0 ? null : info.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)[0];
+          if (string.Equals(language, "mermaid", StringComparison.OrdinalIgnoreCase))
+          {
+            return new MarkdownMermaidBlock(fencedCode.Lines.ToString());
+          }
           return new MarkdownCodeBlock(fencedCode.Lines.ToString(), language);
         }
       case CodeBlock code:

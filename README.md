@@ -20,6 +20,7 @@ mdview は Markdown ファイルを素早く開いて読むための、軽量な
 - Markdig の型を UI に公開しない表示用 Document Model
 - Avalonia ネイティブコントロールによる見出し、本文、リスト、引用、テーブル、Task List、コードブロックの描画
 - 読み取り専用コードブロックの TextMate 構文強調。未対応・未知の言語は通常のコード表示
+- macOS の Mermaid フローチャート・シーケンス図。公式 Mermaid から SVG を生成し、Avalonia でベクター描画
 - UTF-8 / UTF-8 BOM のファイル読込基盤
 
 パーサーと描画部品はファイル読込・タブ管理・ファイル変更監視と結線されています。ファイル関連付けは Windows のユーザー単位登録基盤のみ実装済みで、ユーザーの明示的な同意なしには実行されません。
@@ -30,6 +31,7 @@ mdview は Markdown ファイルを素早く開いて読むための、軽量な
 2. リポジトリのルートでパッケージを復元し、ビルドします。
 
 ```sh
+export AVALONIA_TELEMETRY_OPTOUT=1
 dotnet restore mdview.sln
 dotnet build mdview.sln --configuration Release
 ```
@@ -67,7 +69,7 @@ Native AOT を使わない通常のビルドだけであれば C++ toolchain は
 macOS / Linux:
 
 ```sh
-DOTNET_CLI_TELEMETRY_OPTOUT=1 TESTINGPLATFORM_TELEMETRY_OPTOUT=1 dotnet test mdview.sln --configuration Release
+DOTNET_CLI_TELEMETRY_OPTOUT=1 TESTINGPLATFORM_TELEMETRY_OPTOUT=1 AVALONIA_TELEMETRY_OPTOUT=1 dotnet test mdview.sln --configuration Release
 ```
 
 Windows PowerShell:
@@ -75,6 +77,7 @@ Windows PowerShell:
 ```powershell
 $env:DOTNET_CLI_TELEMETRY_OPTOUT = "1"
 $env:TESTINGPLATFORM_TELEMETRY_OPTOUT = "1"
+$env:AVALONIA_TELEMETRY_OPTOUT = "1"
 dotnet test mdview.sln --configuration Release
 ```
 
@@ -134,6 +137,8 @@ scripts/publish.sh win-x64 artifacts/aot --aot
 
 `--aot` 指定時は `PublishAot=true` と `InvariantGlobalization=true` を MSBuild に渡します。AvaloniaEdit / TextMate を含むため、各 RID で publish 後に起動確認を行ってください。
 
+macOS ARM64 では Native AOT 版の Mermaid 図生成と SVG ベクター描画も検証しています。
+
 Windows PowerShell では次のように指定します。
 
 ```powershell
@@ -161,6 +166,16 @@ Visual Studio Installer で ARM64 用の C++ build tools を選択した後、De
 - [Avalonia](https://github.com/AvaloniaUI/Avalonia): Windows / macOS 対応のネイティブ UI（MIT）
 - [Markdig](https://github.com/xoofx/markdig): Markdown / GFM パーサー（BSD-2-Clause）
 - AvaloniaEdit / TextMateSharp: 読み取り専用コードブロックの構文強調（MIT）
+- Avalonia.Controls.WebView 12.1.0: macOS の WKWebView による図生成（MIT）
+- Svg.Controls.Skia.Avalonia 12.0.0.17: SVG のベクター描画（MIT）
+- Mermaid 11.12.1: 図の構文解析・配置（MIT。同梱依存の notices とライセンスは配布物の `licenses/` に格納）
+
+Mermaid の JavaScript はアプリに同梱しています。Node.js、Chromium、外部サービスのインストールは不要です。生成用 WKWebView は図が必要になった時にだけ初期化します。本文の描画方式は Avalonia のネイティブコントロールのままです。
+
+表示例は `dotnet run --project src/mdview.Presentation -- docs/samples/mermaid.md` で確認できます。
+図は Zoom / Retina に合わせてベクター描画され、拡大のための画像再生成はありません。
+Windows の Mermaid 表示、図内テキストの検索、図内リンク、HTML ラベル、文書側の Mermaid 設定指定は現在対象外です。生成できない図はエラーと元のコードを表示します。
+設計と検証結果は [Mermaid 設計](docs/mermaid-design.md) を参照してください。
 
 TextMate の Onigwrap 依存は OS / CPU 向けネイティブ資産を NuGet 経由で提供するため、Oniguruma の別途インストールは不要です。自己完結型 Publish には .NET ランタイムも同梱され、文法データの実行時取得はありません。配布物の最終サイズは Publish 工程で測定します。
 

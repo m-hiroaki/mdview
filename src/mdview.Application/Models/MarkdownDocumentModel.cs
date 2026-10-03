@@ -1,6 +1,9 @@
 namespace mdview.Application.Models;
 
-public sealed record MarkdownDocumentModel(IReadOnlyList<MarkdownBlock> Blocks);
+public sealed record MarkdownDocumentModel(IReadOnlyList<MarkdownBlock> Blocks)
+{
+  public string? SearchText { get; init; }
+}
 
 public abstract record MarkdownBlock;
 
@@ -9,6 +12,8 @@ public sealed record MarkdownHeadingBlock(int Level, string Anchor, IReadOnlyLis
 public sealed record MarkdownParagraphBlock(IReadOnlyList<MarkdownInline> Inlines) : MarkdownBlock;
 
 public sealed record MarkdownCodeBlock(string Code, string? Language) : MarkdownBlock;
+
+public sealed record MarkdownMermaidBlock(string Source) : MarkdownBlock;
 
 public sealed record MarkdownListBlock(bool IsOrdered, int Start, IReadOnlyList<MarkdownListItem> Items) : MarkdownBlock;
 

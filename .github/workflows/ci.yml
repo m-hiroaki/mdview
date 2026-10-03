@@ -19,6 +19,7 @@ jobs:
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
       TESTINGPLATFORM_TELEMETRY_OPTOUT: "1"
+      AVALONIA_TELEMETRY_OPTOUT: "1"
 
     steps:
       - name: Checkout

@@ -5,11 +5,14 @@ using mdview.Application.Models;
 using mdview.Application.UseCases;
 using mdview.Infrastructure.FileSystem;
 using mdview.Infrastructure.Markdown;
+using Avalonia.Threading;
 
 namespace mdview.Presentation.ViewModels;
 
-public sealed class MainWindowViewModel : INotifyPropertyChanged
+public sealed class MainWindowViewModel : INotifyPropertyChanged, IDisposable
 {
+  public MainWindowViewModel(MermaidDiagramService? diagrams = null) => Diagrams = diagrams;
+  public MermaidDiagramService? Diagrams { get; }
   private readonly MarkdownTabManager _tabManager = new();
   private readonly MarkdownFileReader _fileReader = new();
   private readonly MarkdigMarkdownParser _parser = new();
@@ -19,6 +22,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
   private MarkdownDocumentModel _activeDocument = new(Array.Empty<MarkdownBlock>());
   private DocumentTabViewModel? _activeTab;
   private bool _isSearchVisible;
+  private bool _disposed;
 
   public ObservableCollection<DocumentTabViewModel> Tabs { get; } = [];
 
@@ -34,7 +38,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
       _activeTab = value;
       ActiveDocument = value?.Document ?? new MarkdownDocumentModel(Array.Empty<MarkdownBlock>());
-      _searchState.SetText(value?.SourceContent);
+      _searchState.SetText(value?.Document.SearchText ?? value?.SourceContent);
       OnPropertyChanged(nameof(SearchStatus));
       PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActiveTab)));
     }
@@ -226,7 +230,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
   private void OnFileChanged(object? sender, MarkdownFileChangedEventArgs e)
   {
-    _ = ReloadFileAsync(e.Path);
+    Dispatcher.UIThread.Post(() => { if (!_disposed) _ = ReloadFileAsync(e.Path); });
   }
 
   private async Task ReloadFileAsync(string path)
@@ -248,6 +252,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     try
     {
       var content = await _fileReader.ReadTextAsync(path);
+      if (_disposed || !Tabs.Contains(tab)) return;
       if (tab.State == DocumentTabState.Loaded && string.Equals(tab.SourceContent, content, StringComparison.Ordinal))
       {
         return;
@@ -258,7 +263,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
       tab.State = DocumentTabState.Loaded;
       if (ReferenceEquals(ActiveTab, tab))
       {
-        _searchState.SetText(content);
+        _searchState.SetText(tab.Document.SearchText ?? content);
         OnPropertyChanged(nameof(SearchStatus));
       }
       if (ReferenceEquals(ActiveTab, tab))
@@ -284,6 +289,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
   public event PropertyChangedEventHandler? PropertyChanged;
+
+  public void Dispose()
+  {
+    _disposed = true;
+    foreach (var watcher in _watchers.Values) { watcher.Changed -= OnFileChanged; watcher.Dispose(); }
+    _watchers.Clear();
+    Diagrams?.Dispose();
+  }
 }
 
 public sealed class DocumentTabViewModel : INotifyPropertyChanged

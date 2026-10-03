@@ -5,6 +5,10 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
 using mdview.Presentation.ViewModels;
+using mdview.Application.UseCases;
+using mdview.Infrastructure.Mermaid;
+using Avalonia.Controls.Templates;
+using mdview.Application.Models;
 
 namespace mdview.Presentation;
 
@@ -18,7 +22,25 @@ public partial class MainWindow : Window
     public MainWindow(IEnumerable<string>? startupPaths = null)
     {
         InitializeComponent();
-        DataContext = new MainWindowViewModel();
+        MacOsMermaidSvgGenerator? generator = null;
+        if (OperatingSystem.IsMacOS())
+        {
+            generator = new MacOsMermaidSvgGenerator(webView =>
+            {
+                MermaidHost.Children.Clear();
+                if (webView is not null)
+                {
+                    Canvas.SetLeft(webView, -2048);
+                    MermaidHost.Children.Add(webView);
+                }
+            });
+        }
+        DataContext = new MainWindowViewModel(generator is null ? null : new MermaidDiagramService(generator));
+        ((MainWindowViewModel)DataContext).PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MainWindowViewModel.ActiveDocument)) UpdateDocumentPanel();
+        };
+        Closed += (_, _) => { (DataContext as MainWindowViewModel)?.Dispose(); generator?.Dispose(); };
         ApplyZoom();
 
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
@@ -34,6 +56,29 @@ public partial class MainWindow : Window
             }
         }
     }
+
+    private bool _usesDiagramPanel;
+
+    private void UpdateDocumentPanel()
+    {
+        var hasDiagrams = DataContext is MainWindowViewModel vm &&
+            vm.ActiveDocument is { } document && ContainsDiagram(document.Blocks);
+        if (hasDiagrams == _usesDiagramPanel) return;
+        _usesDiagramPanel = hasDiagrams;
+        // Async diagram heights are incompatible with estimated virtual item sizes.
+        // Keep virtualization for ordinary Markdown and stable layout for diagrams.
+        DocumentContent.ItemsPanel = hasDiagrams
+            ? new FuncTemplate<Panel?>(() => new StackPanel())
+            : new FuncTemplate<Panel?>(() => new VirtualizingStackPanel());
+    }
+
+    private static bool ContainsDiagram(IEnumerable<MarkdownBlock> blocks) => blocks.Any(block => block switch
+    {
+        MarkdownMermaidBlock => true,
+        MarkdownQuoteBlock quote => ContainsDiagram(quote.Blocks),
+        MarkdownListBlock list => list.Items.Any(item => ContainsDiagram(item.Blocks)),
+        _ => false
+    });
 
     public void ScrollToAnchor(string anchor)
     {
@@ -256,8 +301,7 @@ public partial class MainWindow : Window
     {
         if (DataContext is MainWindowViewModel viewModel)
         {
-            DocumentContent.RenderTransform = new Avalonia.Media.ScaleTransform(viewModel.ZoomScale, viewModel.ZoomScale);
-            DocumentContent.RenderTransformOrigin = new Avalonia.RelativePoint(0, 0, Avalonia.RelativeUnit.Relative);
+            DocumentZoom.LayoutTransform = new Avalonia.Media.ScaleTransform(viewModel.ZoomScale, viewModel.ZoomScale);
         }
     }
 

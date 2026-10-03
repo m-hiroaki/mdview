@@ -1,8 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <PackageReference Include="Markdig" Version="1.4.0" />
+    <PackageReference Include="Avalonia.Controls.WebView" Version="12.1.0" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Mermaid/Assets/*.js" />
+    <None Update="Mermaid/Assets/*.LICENSE;Mermaid/Assets/*notices.txt"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest"
+          TargetPath="licenses/%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="mdview.Infrastructure.Tests" />
     <ProjectReference Include="../mdview.Application/mdview.Application.csproj" />
   </ItemGroup>
 </Project>
