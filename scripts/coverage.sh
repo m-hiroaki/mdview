@@ -2,6 +2,9 @@
 set -eu
 
 output_root="${1:-coverage}"
+dotnet restore mdview.sln
+dotnet tool restore --tool-manifest .config/dotnet-tools.json
+
 rm -rf "$output_root"
 mkdir -p "$output_root"
 
@@ -20,7 +23,6 @@ do
     --results-directory "$output_root/$project_name"
 done
 
-dotnet tool restore --tool-manifest .config/dotnet-tools.json
 dotnet tool run reportgenerator \
   "-reports:$output_root/**/coverage.cobertura.xml" \
   "-targetdir:$output_root/report" \

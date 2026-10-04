@@ -4,6 +4,15 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+dotnet restore mdview.sln
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+dotnet tool restore --tool-manifest .config/dotnet-tools.json
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+
 if (Test-Path $OutputRoot) {
     Remove-Item -Recurse -Force $OutputRoot
 }
@@ -30,7 +39,6 @@ foreach ($project in $projects) {
     }
 }
 
-dotnet tool restore --tool-manifest .config/dotnet-tools.json
 dotnet tool run reportgenerator `
     "-reports:$OutputRoot/**/coverage.cobertura.xml" `
     "-targetdir:$OutputRoot/report" `

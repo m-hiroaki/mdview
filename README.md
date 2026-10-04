@@ -1,5 +1,7 @@
 # mdview
 
+<img src="src/mdview.Presentation/assets/mdview-icon.png" alt="mdview アプリアイコン" width="96" height="96">
+
 ## アプリの概要
 
 mdview は、Markdown ファイルを素早く開いて読むための軽量なデスクトップ Viewer です。Windows / macOS（x64・ARM64）を対象とし、常にダークテーマで表示します。
@@ -33,13 +35,60 @@ dotnet run --project src/mdview.Presentation -- README.md
 
 ZIP 配布物の作成には [publish.sh](scripts/publish.sh) または [publish.ps1](scripts/publish.ps1) を使用します。
 
+通常の自己完結型 publish と ZIP 作成:
+
+```sh
+# macOS
+scripts/publish.sh osx-arm64
+scripts/publish.sh osx-x64
+```
+
+```powershell
+# Windows
+.\scripts\publish.ps1 win-arm64
+.\scripts\publish.ps1 win-x64
+```
+
+出力先は `artifacts/<RID>/`、ZIP は `artifacts/mdview-<RID>.zip` です。使用する CPU に合わせてコマンドを選んでください。
+
+Native AOT でコンパイルして ZIP 配布物を作成する例:
+
+```sh
+# macOS ARM64
+scripts/publish.sh osx-arm64 artifacts/aot --aot
+```
+
+```powershell
+# Windows ARM64
+.\scripts\publish.ps1 win-arm64 artifacts\aot -Aot
+
+# Windows x64
+.\scripts\publish.ps1 win-x64 artifacts\aot -Aot
+```
+
+x64 向けは RID を `osx-x64` / `win-x64` に変更します。対象 OS の開発環境で実行し、macOS は Xcode Command Line Tools、Windows は対象 CPU 向けの Visual Studio C++ Build Tools と Windows SDK を用意してください。
+
 ## テスト方法
 
 ```sh
 dotnet test mdview.sln --configuration Release
 ```
 
-カバレッジは [coverage.sh](scripts/coverage.sh) または [coverage.ps1](scripts/coverage.ps1) で測定できます。GitHub Actions でも macOS / Windows の Build と Test を実行します。
+カバレッジ取得は、リポジトリのルートで実行します。スクリプト内でパッケージとレポート生成ツールを restore するため、事前の restore は不要です。
+
+```sh
+# macOS
+scripts/coverage.sh
+```
+
+```powershell
+# Windows
+.\scripts\coverage.ps1
+```
+
+各テストプロジェクトの結果は `coverage/<プロジェクト名>/coverage.cobertura.xml`、HTML レポートは `coverage/report/index.html` に出力されます。HTML レポートをブラウザーで開いて確認できます。再実行時は既存の `coverage/` を作り直します。
+
+GitHub Actions でも macOS / Windows の Build と Test、カバレッジ取得を実行します。
 
 開発ツールのテレメトリを無効にする場合は、`DOTNET_CLI_TELEMETRY_OPTOUT`、`TESTINGPLATFORM_TELEMETRY_OPTOUT`、`AVALONIA_TELEMETRY_OPTOUT` を環境変数として `1` に設定してください。
 
