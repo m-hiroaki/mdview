@@ -1,18 +1,18 @@
-# Mermaid 表示設計（macOS 先行）
+# Mermaid 表示設計
 
 ## 方針と状態
 
 公式 Mermaid → SVG → Avalonia のベクター描画を採用する方向で設計する。
 本文の Markdig / ネイティブ描画 / Onion Architecture は維持する。
-macOS 先行実装を追加済み。依存は Avalonia.Controls.WebView 12.1.0、Svg.Controls.Skia.Avalonia 12.0.0.17、公式 Mermaid 11.12.1。
-ARM64 実機で通常版と Native AOT 版の SVG 生成・描画を確認した。Intel Mac / Windows の実機確認は未実施。
+macOS 先行実装に Windows 対応を追加済み。依存は Avalonia.Controls.WebView 12.1.0、Svg.Controls.Skia.Avalonia 12.0.0.17、公式 Mermaid 11.12.1。
+macOS ARM64 実機で通常版と Native AOT 版の SVG 生成・描画を確認した。Windows ARM64 で図生成を検証済み。Intel Mac / Windows x64 の実機確認は未実施。
 ユーザーが Mermaid 対応とこの方式を明示的に要求したため、AGENTS.md 第6項の対象外条件を解除する。
 WebView は図生成専用。Markdown 本文を HTML 化して表示する用途には使わない。
 
 ## 対象範囲
 
 - Markdown の fenced code block の言語指定 `mermaid` を認識する。
-- macOS ARM64 / x64 を先行対象とし、フローチャートとシーケンス図を動作保証する。
+- Windows ARM64 / x64、macOS ARM64 / x64 を対象とし、フローチャートとシーケンス図を動作保証する。
 - その他の図種は検証後に対応範囲を広げる。独自の Mermaid 構文解析・レイアウトエンジンは作らない。
 - 常にダークテーマ、読み取り専用。図内リンク、コールバック、アニメーション、外部画像、外部アイコン、HTML ラベル、ユーザー指定 CSS は初期対象外。
 - PNG 化やスクリーンショットを通常表示経路に入れない。
@@ -25,7 +25,7 @@ MarkdigMarkdownParser
   → MermaidDiagramViewModel
   → MermaidDiagramService（生成要求・キャッシュ）
   → IMermaidSvgGenerator
-      macOS: WKWebView / Windows（将来）: WebView2
+      macOS: WKWebView / Windows: WebView2
       共通のローカル HTML + 公式 Mermaid + JS ブリッジ
   → SVG の検証
   → MermaidSvgDocument（SVG 文字列・viewBox）
@@ -98,13 +98,23 @@ OS フォントの fallback・日本語 shaping が WebKit と SVG 描画側で�
 - 生成中は図領域に短いメッセージ。失敗時は短いエラーと読み取り専用ソースを表示する。
 - 初期版は図内ラベルの検索ハイライトを行わない。Mermaid ソースは通常検索の対象から除外し、件数と可視ハイライトが食い違わないよう検索用テキストの組み立てを変更する。
 
-## Windows への拡張
+## Windows 対応
 
-`IMermaidSvgGenerator` の WebView2 実装を追加し、OS 選択だけを変更する。
+`WebViewMermaidSvgGenerator` を Windows / macOS で共用し、composition root で対応 OS を選択する。
+既存の Avalonia.Controls.WebView 12.1.0 が Windows で WebView2 を使用するため、新しい NuGet パッケージは追加しない。
 JS ブリッジ、Mermaid 資産、SVG 検証、キャッシュ、ViewModel、Avalonia の描画を再利用する。
-WebView2 Runtime の存在確認、未導入時のブロック内エラー、x64 / ARM64 資産、スレッドとプロセス寿命は Windows 実装で扱う。
-実行時の自動ダウンロード・インストールはしない。Runtime 同梱の是非は ZIP サイズへの影響を含め、Windows 対応時に判断する。
-macOS 先行期間も Windows の Build / 通常 Markdown 表示を維持し、Mermaid は対応環境外の説明とソースを表示する。
+
+- WebView2 Evergreen Runtime は OS 側の導入を前提とする。Microsoft の手順に従い、マシン / ユーザーの登録バージョンを図生成前に確認する。未導入時は図の領域にエラーと元のコードを表示する。
+- Runtime は ZIP に同梱しない。実行時の自動ダウンロード・インストールもしない。固定バージョン Runtime / Edge プレビュー版の利用は対象外。
+- 非公開プロファイルを使い、ブラウザーデータの保存先は `%LOCALAPPDATA%/mdview/MermaidWebView2` とする。実行ファイルの隣への書き込みは不要。WebView2 の管理ファイルはディスクに残る場合がある。
+- Windows は小さな固定 HTML を読み込み、NavigationCompleted 後に同梱の Mermaid とブリッジをネイティブの InvokeScript で実行する。大きな Mermaid bundle を HTML に含めず、WebView2 の NavigateToString の 2 MiB 制限にも抵触しない。CSP はページ側のスクリプト・画像・接続・フレームを禁止する。
+- Avalonia の Windows アダプターは HTML を data URI に変換するため、生成した HTML と完全一致する data URI と about:blank のみ許可する。他の data URI、外部 URL、ローカルファイルへの移動、新しいウィンドウは禁止する。
+- macOS の nonce 付きインライン資産と非永続ストアの設定は維持する。
+- WebView の操作・解放は UI スレッドで行い、生成は一度に一件。既存のタイムアウト、キャンセル、破棄後の再作成を共用する。
+
+Windows ARM64 実機でフローチャート、シーケンス図、日本語ラベル、構文エラー後の次の図の生成と既存 SvgSource による SVG の読み込みを確認した。
+Windows x64、Windows Native AOT、Web プロセス強制終了、Runtime 未導入の実機検証は未実施。
+この Windows 開発環境ではアプリケーション制御が Avalonia.Generators.dll をブロックするため、Presentation を含む通常ビルドの再検証は未完了。図生成・SVG 読み込みは別の XAML 不使用の検証ホストで確認した。コード生成相当の検証専用 partial class を一時的に追加した Release ビルドは成功した（製品ソースには含めない）。xUnit は Domain 5 件、Application 19 件、Infrastructure 43 件が成功した。
 
 ## 依存関係の判断
 
@@ -148,12 +158,15 @@ Mermaid を含む文書は非仮想化の StackPanel で配置する。図の非
 - Retina 相当の 192 DPI 描画で日本語・線・矢印・文字位置を確認。
 - osx-arm64 / osx-x64 / win-x64 / win-arm64 の通常 self-contained publish が成功。最終 osx-arm64 配布物の起動と図表示を実機確認。
 - 配布物の `licenses/` に関連ライセンス・bundle notices が出力されることを確認。
-- Intel Mac / Windows の実機確認、各 OS の他 RID での Native AOT、Web プロセス強制終了・タイムアウトの実機検証、多数図とアイドルメモリの定量測定は未実施。
+- Intel Mac / Windows x64 の実機確認、各 OS の他 RID での Native AOT、Web プロセス強制終了・タイムアウトの実機検証、多数図とアイドルメモリの定量測定は未実施。
 
 ## 参照
 
 - [Mermaid API](https://mermaid.js.org/config/usage.html)
 - [Mermaid 設定・htmlLabels](https://mermaid.js.org/config/schema-docs/config.html)
 - [Avalonia NativeWebView](https://docs.avaloniaui.net/controls/web/nativewebview)
+- [WebView 環境設定](https://docs.avaloniaui.net/controls/web/webview-environment)
+- [WebView2 Runtime の検出・配布](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution)
+- [WebView2 のローカルコンテンツと HTML サイズ制限](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/working-with-local-content)
 - [Svg.Skia / Avalonia 対応](https://github.com/wieslawsoltes/Svg.Skia)
 - [Mermaid ソースとライセンス](https://github.com/mermaid-js/mermaid)

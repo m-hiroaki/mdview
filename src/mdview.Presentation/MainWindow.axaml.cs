@@ -22,10 +22,10 @@ public partial class MainWindow : Window
     public MainWindow(IEnumerable<string>? startupPaths = null)
     {
         InitializeComponent();
-        MacOsMermaidSvgGenerator? generator = null;
-        if (OperatingSystem.IsMacOS())
+        WebViewMermaidSvgGenerator? generator = null;
+        if (OperatingSystem.IsMacOS() || OperatingSystem.IsWindows())
         {
-            generator = new MacOsMermaidSvgGenerator(webView =>
+            generator = new WebViewMermaidSvgGenerator(webView =>
             {
                 MermaidHost.Children.Clear();
                 if (webView is not null)

@@ -11,7 +11,7 @@ mdview は Markdown ファイルを素早く開いて読むための、軽量な
 - 開発 SDK: .NET 10 LTS（`global.json` で SDK 10.0.401 を指定）
 - UI: Avalonia UI 12.1.3
 
-現在の実機確認は macOS arm64 のみです。GitHub Actions では macOS / Windows の Build と Test を実行します。
+アプリ全体の実機確認は macOS arm64、Mermaid の図生成と SVG 読み込みは Windows arm64 でも実施しています。GitHub Actions では macOS / Windows の Build と Test を実行します。
 
 ## 現在実装されているもの
 
@@ -20,7 +20,7 @@ mdview は Markdown ファイルを素早く開いて読むための、軽量な
 - Markdig の型を UI に公開しない表示用 Document Model
 - Avalonia ネイティブコントロールによる見出し、本文、リスト、引用、テーブル、Task List、コードブロックの描画
 - 読み取り専用コードブロックの TextMate 構文強調。未対応・未知の言語は通常のコード表示
-- macOS の Mermaid フローチャート・シーケンス図。公式 Mermaid から SVG を生成し、Avalonia でベクター描画
+- Windows / macOS の Mermaid フローチャート・シーケンス図。公式 Mermaid から SVG を生成し、Avalonia でベクター描画
 - UTF-8 / UTF-8 BOM のファイル読込基盤
 
 パーサーと描画部品はファイル読込・タブ管理・ファイル変更監視と結線されています。ファイル関連付けは Windows のユーザー単位登録基盤のみ実装済みで、ユーザーの明示的な同意なしには実行されません。
@@ -166,15 +166,15 @@ Visual Studio Installer で ARM64 用の C++ build tools を選択した後、De
 - [Avalonia](https://github.com/AvaloniaUI/Avalonia): Windows / macOS 対応のネイティブ UI（MIT）
 - [Markdig](https://github.com/xoofx/markdig): Markdown / GFM パーサー（BSD-2-Clause）
 - AvaloniaEdit / TextMateSharp: 読み取り専用コードブロックの構文強調（MIT）
-- Avalonia.Controls.WebView 12.1.0: macOS の WKWebView による図生成（MIT）
+- Avalonia.Controls.WebView 12.1.0: macOS の WKWebView / Windows の WebView2 による図生成（MIT）
 - Svg.Controls.Skia.Avalonia 12.0.0.17: SVG のベクター描画（MIT）
 - Mermaid 11.12.1: 図の構文解析・配置（MIT。同梱依存の notices とライセンスは配布物の `licenses/` に格納）
 
-Mermaid の JavaScript はアプリに同梱しています。Node.js、Chromium、外部サービスのインストールは不要です。生成用 WKWebView は図が必要になった時にだけ初期化します。本文の描画方式は Avalonia のネイティブコントロールのままです。
+Mermaid の JavaScript はアプリに同梱しています。Node.js や外部サービスは不要です。Windows では Microsoft Edge WebView2 Evergreen Runtime が必要です（アプリには同梱せず、自動ダウンロード・インストールもしません）。Runtime 未導入時は図の領域にエラーと元のコードを表示します。生成用 WKWebView / WebView2 は図が必要になった時にだけ初期化します。本文の描画方式は Avalonia のネイティブコントロールのままです。
 
 表示例は `dotnet run --project src/mdview.Presentation -- docs/samples/mermaid.md` で確認できます。
 図は Zoom / Retina に合わせてベクター描画され、拡大のための画像再生成はありません。
-Windows の Mermaid 表示、図内テキストの検索、図内リンク、HTML ラベル、文書側の Mermaid 設定指定は現在対象外です。生成できない図はエラーと元のコードを表示します。
+図内テキストの検索、図内リンク、HTML ラベル、文書側の Mermaid 設定指定は現在対象外です。生成できない図はエラーと元のコードを表示します。
 設計と検証結果は [Mermaid 設計](docs/mermaid-design.md) を参照してください。
 
 TextMate の Onigwrap 依存は OS / CPU 向けネイティブ資産を NuGet 経由で提供するため、Oniguruma の別途インストールは不要です。自己完結型 Publish には .NET ランタイムも同梱され、文法データの実行時取得はありません。配布物の最終サイズは Publish 工程で測定します。

@@ -6,12 +6,71 @@ namespace mdview.Infrastructure.Tests;
 
 public class MermaidTests
 {
+  [Theory]
+  [InlineData(null, false)]
+  [InlineData("", false)]
+  [InlineData("0.0.0.0", false)]
+  [InlineData("invalid", false)]
+  [InlineData("154.0.4258.53", true)]
+  public void RuntimeDetection_RequiresInstalledVersion(string? version, bool installed) =>
+    Assert.Equal(installed, WebViewMermaidSvgGenerator.HasRuntimeVersion(version));
+
+  [Theory]
+  [InlineData("about:blank", true)]
+  [InlineData("data:text/html;charset=utf-8;base64,fixed", true)]
+  [InlineData("data:text/html;charset=utf-8;base64,other", false)]
+  [InlineData("https://example.com", false)]
+  [InlineData("file:///C:/secret.md", false)]
+  [InlineData(null, false)]
+  public void Navigation_AllowsOnlyExactBootstrapAndBlank(string? request, bool allowed) =>
+    Assert.Equal(allowed, WebViewMermaidSvgGenerator.IsAllowedNavigation(request, "data:text/html;charset=utf-8;base64,fixed"));
+
+  [Fact]
+  public void WindowsHtml_StaysBelowWebView2LimitAndBlocksExternalResources()
+  {
+    var html = WebViewMermaidSvgGenerator.CreateWindowsHtml();
+    Assert.True(System.Text.Encoding.UTF8.GetByteCount(html) < 2 * 1024 * 1024);
+    Assert.DoesNotContain("<script", html);
+    Assert.Contains("script-src 'none'", html);
+    Assert.Contains("connect-src 'none'", html);
+    Assert.Contains("img-src 'none'", html);
+    Assert.Contains("frame-src 'none'", html);
+  }
+
+  [Fact]
+  public void WindowsEnvironment_UsesPrivateProfileOutsideExecutableDirectory()
+  {
+    // Avalonia creates these event args through an internal constructor.
+    var constructor = Assert.Single(typeof(Avalonia.Platform.WindowsWebView2EnvironmentRequestedEventArgs)
+      .GetConstructors(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic));
+    var environment = (Avalonia.Platform.WindowsWebView2EnvironmentRequestedEventArgs)constructor.Invoke([null]);
+    WebViewMermaidSvgGenerator.ConfigureWindowsEnvironment(environment);
+    Assert.False(environment.EnableDevTools);
+    Assert.True(environment.IsInPrivateModeEnabled);
+    Assert.Equal("Mermaid", environment.ProfileName);
+    Assert.Equal(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+      "mdview", "MermaidWebView2"), environment.UserDataFolder);
+  }
+
+  [Theory]
+  [InlineData("%%{init: {securityLevel: 'loose'}}%%\nflowchart TD\nA-->B")]
+  [InlineData("---\nconfig:\n  securityLevel: loose\n---\nflowchart TD\nA-->B")]
+  [InlineData("long")]
+  public async Task Generator_RejectsUnsafeOrExcessiveSourceBeforeCreatingHost(string source)
+  {
+    if (!OperatingSystem.IsWindows() && !OperatingSystem.IsMacOS()) return;
+    using var generator = new WebViewMermaidSvgGenerator(_ => throw new Exception("Host must not be created."));
+    var result = await generator.GenerateAsync(source == "long" ? new string('a', 50001) : source, TestContext.Current.CancellationToken);
+    Assert.Null(result.Document);
+    Assert.NotNull(result.Error);
+  }
+
   [Fact]
   public void RenderScript_SerializesSafelyWithJsonReflectionDisabled()
   {
     Assert.False(System.Text.Json.JsonSerializer.IsReflectionEnabledByDefault);
     const string source = "flowchart TD\nA[\"日本語 \\\\ </script>\"] --> B";
-    var script = MacOsMermaidSvgGenerator.CreateRenderScript(42, source);
+    var script = WebViewMermaidSvgGenerator.CreateRenderScript(42, source);
     const string prefix = "mdviewRender(42, ";
     const string suffix = "); void 0;";
     Assert.StartsWith(prefix, script);

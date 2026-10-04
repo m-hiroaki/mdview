@@ -7,8 +7,8 @@ using mdview.Application.Models;
 
 namespace mdview.Infrastructure.Mermaid;
 
-/// <summary>WKWebView produces SVG only; the caller supplies its offscreen UI host.</summary>
-public sealed class MacOsMermaidSvgGenerator(Action<NativeWebView?> setHost) : IMermaidSvgGenerator, IDisposable
+/// <summary>WKWebView / WebView2 produce SVG only; the caller supplies its offscreen UI host.</summary>
+public sealed class WebViewMermaidSvgGenerator(Action<NativeWebView?> setHost) : IMermaidSvgGenerator, IDisposable
 {
   private readonly SemaphoreSlim _gate = new(1);
   private NativeWebView? _webView;
@@ -16,10 +16,11 @@ public sealed class MacOsMermaidSvgGenerator(Action<NativeWebView?> setHost) : I
   private TaskCompletionSource<MermaidGenerationResult>? _response;
   private long _requestId;
   private bool _disposed;
+  private string? _bootstrapNavigation;
 
   public async Task<MermaidGenerationResult> GenerateAsync(string source, CancellationToken cancellationToken)
   {
-    if (!OperatingSystem.IsMacOS()) return MermaidGenerationResult.Failure("Mermaid は現在 macOS のみ対応しています。");
+    if (!OperatingSystem.IsMacOS() && !OperatingSystem.IsWindows()) return MermaidGenerationResult.Failure("Mermaid は Windows / macOS に対応しています。");
     if (source.Length > 50000) return MermaidGenerationResult.Failure("Mermaid のソースが長すぎます。");
     // Document-provided configuration is intentionally unsupported; it must not weaken fixed settings.
     if (source.Contains("%%{", StringComparison.Ordinal) || source.TrimStart().StartsWith("---", StringComparison.Ordinal))
@@ -31,13 +32,20 @@ public sealed class MacOsMermaidSvgGenerator(Action<NativeWebView?> setHost) : I
     try
     {
       ObjectDisposedException.ThrowIf(_disposed, this);
+      if (OperatingSystem.IsWindows() && _webView is null)
+      {
+        if (!HasWebView2Runtime())
+          return MermaidGenerationResult.Failure("Mermaid の表示には Microsoft Edge WebView2 Runtime が必要です。");
+        // Fail inside this awaited operation, rather than the adapter's async initialization callback.
+        Directory.CreateDirectory(WindowsUserDataFolder());
+      }
       await Dispatcher.UIThread.InvokeAsync(EnsureWebView);
       await _ready!.Task.WaitAsync(timeout.Token);
       var id = Interlocked.Increment(ref _requestId);
       var response = new TaskCompletionSource<MermaidGenerationResult>(TaskCreationOptions.RunContinuationsAsynchronously);
       await Dispatcher.UIThread.InvokeAsync(() => _response = response);
       var script = CreateRenderScript(id, source);
-      // InvokeScript itself may hang if the WebKit process is unresponsive.
+      // InvokeScript itself may hang if the browser process is unresponsive.
       Task<string?>? invocation = null;
       await Dispatcher.UIThread.InvokeAsync(() => { invocation = _webView!.InvokeScript(script); });
       await invocation!.WaitAsync(timeout.Token);
@@ -47,12 +55,16 @@ public sealed class MacOsMermaidSvgGenerator(Action<NativeWebView?> setHost) : I
     {
       await Dispatcher.UIThread.InvokeAsync(Reset);
       cancellationToken.ThrowIfCancellationRequested();
-      return MermaidGenerationResult.Failure("図の生成が時間内に完了しませんでした。");
+      return MermaidGenerationResult.Failure(OperatingSystem.IsWindows()
+        ? "図の生成が時間内に完了しませんでした。Microsoft Edge WebView2 Runtime の導入状況を確認してください。"
+        : "図の生成が時間内に完了しませんでした。");
     }
     catch (Exception)
     {
       await Dispatcher.UIThread.InvokeAsync(Reset);
-      return MermaidGenerationResult.Failure("図の生成環境を初期化できませんでした。");
+      return MermaidGenerationResult.Failure(OperatingSystem.IsWindows()
+        ? "図の生成環境を初期化できませんでした。Microsoft Edge WebView2 Runtime が必要です。"
+        : "図の生成環境を初期化できませんでした。");
     }
     finally { _gate.Release(); }
   }
@@ -79,16 +91,58 @@ public sealed class MacOsMermaidSvgGenerator(Action<NativeWebView?> setHost) : I
   {
     e.EnableDevTools = false;
     if (e is AppleWKWebViewEnvironmentRequestedEventArgs apple) apple.NonPersistentDataStore = true;
+    if (e is WindowsWebView2EnvironmentRequestedEventArgs windows) ConfigureWindowsEnvironment(windows);
   }
+
+  internal static void ConfigureWindowsEnvironment(WindowsWebView2EnvironmentRequestedEventArgs windows)
+  {
+    windows.EnableDevTools = false;
+    windows.IsInPrivateModeEnabled = true;
+    // ZIPs may be extracted into a read-only directory. Never store browser data beside the executable.
+    windows.UserDataFolder = WindowsUserDataFolder();
+    windows.ProfileName = "Mermaid";
+  }
+
+  private static string WindowsUserDataFolder() =>
+    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "mdview", "MermaidWebView2");
+
+  [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+  private static bool HasWebView2Runtime()
+  {
+    // Microsoft documents these per-machine / per-user Evergreen Runtime registrations.
+    const string key = @"SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}";
+    using var machine = Microsoft.Win32.RegistryKey.OpenBaseKey(Microsoft.Win32.RegistryHive.LocalMachine,
+      Microsoft.Win32.RegistryView.Registry32);
+    using var user = Microsoft.Win32.RegistryKey.OpenBaseKey(Microsoft.Win32.RegistryHive.CurrentUser,
+      Microsoft.Win32.RegistryView.Default);
+    using var machineRuntime = machine.OpenSubKey(key);
+    using var userRuntime = user.OpenSubKey(key);
+    return HasRuntimeVersion(machineRuntime?.GetValue("pv") as string) ||
+      HasRuntimeVersion(userRuntime?.GetValue("pv") as string);
+  }
+
+  internal static bool HasRuntimeVersion(string? value) =>
+    Version.TryParse(value, out var version) && version > new Version(0, 0, 0, 0);
+
+  internal static string CreateWindowsHtml() =>
+    "<!doctype html><html><head><meta charset='utf-8'>" +
+    "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; img-src 'none'; font-src 'none'; connect-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'\">" +
+    "<style>body{margin:0;font-family:Arial,'Hiragino Sans',sans-serif}</style></head><body></body></html>";
 
   private async void OnNavigationCompleted(object? sender, WebViewNavigationCompletedEventArgs e)
   {
     if (!ReferenceEquals(sender, _webView)) return;
     var ready = _ready;
+    var webView = _webView;
     try
     {
       if (!e.IsSuccess) throw new InvalidOperationException();
-      await _webView!.InvokeScript("if(typeof mdviewRender === 'function') invokeCSharpAction(JSON.stringify({ready:true}));void 0;");
+      // NavigateToString is limited to 2 MiB in WebView2; the Mermaid bundle exceeds it.
+      // Execute only trusted embedded assets through the native API, keeping page scripts forbidden.
+      if (OperatingSystem.IsWindows())
+        await webView!.InvokeScript(Resource("mermaid-11.12.1.min.js") + "\n" + Resource("bridge.js") + "\nvoid 0;");
+      if (!ReferenceEquals(webView, _webView)) return;
+      await webView!.InvokeScript("if(typeof mdviewRender === 'function') invokeCSharpAction(JSON.stringify({ready:true}));void 0;");
     }
     catch (Exception) { ready?.TrySetException(new InvalidOperationException("Mermaid initialization failed.")); }
   }
@@ -98,14 +152,23 @@ public sealed class MacOsMermaidSvgGenerator(Action<NativeWebView?> setHost) : I
     if (!ReferenceEquals(sender, _webView)) return;
     try
     {
-    // Inline fixed assets: no file access, CDN or HTTP server is needed.
-    var nonce = Guid.NewGuid().ToString("N");
-    var html = "<!doctype html><html><head><meta charset='utf-8'>" +
-      $"<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; script-src 'nonce-{nonce}'; style-src 'unsafe-inline'; img-src 'none'; font-src 'none'; connect-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'\">" +
-      "<style>body{margin:0;font-family:Arial,'Hiragino Sans',sans-serif}</style></head><body>" +
-      $"<script nonce='{nonce}'>" + Resource("mermaid-11.12.1.min.js").Replace("</script", "<\\/script", StringComparison.OrdinalIgnoreCase) + "</script>" +
-      $"<script nonce='{nonce}'>" + Resource("bridge.js") + "</script></body></html>";
-    _webView!.NavigateToString(html, new Uri("about:blank"));
+      if (OperatingSystem.IsWindows())
+      {
+        var bootstrap = CreateWindowsHtml();
+        // Avalonia's Windows adapter loads NavigateToString content through an exact data URI.
+        _bootstrapNavigation = "data:text/html;charset=utf-8;base64," +
+          Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(bootstrap));
+        _webView!.NavigateToString(bootstrap, new Uri("about:blank"));
+        return;
+      }
+      // Inline fixed assets: no file access, CDN or HTTP server is needed.
+      var nonce = Guid.NewGuid().ToString("N");
+      var html = "<!doctype html><html><head><meta charset='utf-8'>" +
+        $"<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; script-src 'nonce-{nonce}'; style-src 'unsafe-inline'; img-src 'none'; font-src 'none'; connect-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'\">" +
+        "<style>body{margin:0;font-family:Arial,'Hiragino Sans',sans-serif}</style></head><body>" +
+        $"<script nonce='{nonce}'>" + Resource("mermaid-11.12.1.min.js").Replace("</script", "<\\/script", StringComparison.OrdinalIgnoreCase) + "</script>" +
+        $"<script nonce='{nonce}'>" + Resource("bridge.js") + "</script></body></html>";
+      _webView!.NavigateToString(html, new Uri("about:blank"));
     }
     catch (Exception) { _ready?.TrySetException(new InvalidOperationException("Mermaid assets could not be loaded.")); }
   }
@@ -133,17 +196,21 @@ public sealed class MacOsMermaidSvgGenerator(Action<NativeWebView?> setHost) : I
     catch (JsonException) { /* Ignore unsolicited or malformed messages. */ }
   }
 
-  private void OnNavigation(object? sender, WebViewNavigationStartingEventArgs e) => e.Cancel = e.Request?.ToString() != "about:blank";
+  private void OnNavigation(object? sender, WebViewNavigationStartingEventArgs e) =>
+    e.Cancel = !IsAllowedNavigation(e.Request?.ToString(), _bootstrapNavigation);
+  internal static bool IsAllowedNavigation(string? request, string? bootstrap) =>
+    request == "about:blank" || (bootstrap is not null && request == bootstrap);
   private void OnNewWindow(object? sender, WebViewNewWindowRequestedEventArgs e) => e.Handled = true;
   private void OnAdapterDestroyed(object? sender, WebViewAdapterEventArgs e)
   {
+    if (!ReferenceEquals(sender, _webView)) return;
     _ready?.TrySetException(new InvalidOperationException("WebView stopped."));
     _response?.TrySetException(new InvalidOperationException("WebView stopped."));
   }
 
   private static string Resource(string name)
   {
-    using var stream = typeof(MacOsMermaidSvgGenerator).Assembly.GetManifestResourceStream("mdview.Infrastructure.Mermaid.Assets." + name)
+    using var stream = typeof(WebViewMermaidSvgGenerator).Assembly.GetManifestResourceStream("mdview.Infrastructure.Mermaid.Assets." + name)
       ?? throw new InvalidOperationException("Mermaid asset missing.");
     using var reader = new StreamReader(stream);
     return reader.ReadToEnd();
@@ -167,6 +234,7 @@ public sealed class MacOsMermaidSvgGenerator(Action<NativeWebView?> setHost) : I
     }
     _ready = null;
     _response = null;
+    _bootstrapNavigation = null;
   }
 
   public void Dispose()

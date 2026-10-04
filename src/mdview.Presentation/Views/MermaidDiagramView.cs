@@ -22,7 +22,7 @@ public sealed class MermaidDiagramView : Border
     Margin = new Thickness(0, 6, 0, 12);
     if (service is null)
     {
-      ShowError("Mermaid は現在 macOS のみ対応しています。");
+      ShowError("この環境では Mermaid を表示できません。");
       return;
     }
     _viewModel = new(service, block.Source);
@@ -32,7 +32,7 @@ public sealed class MermaidDiagramView : Border
   protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
   {
     base.OnAttachedToVisualTree(e);
-    if (_viewModel is null) { ShowError("Mermaid は現在 macOS のみ対応しています。"); return; }
+    if (_viewModel is null) { ShowError("この環境では Mermaid を表示できません。"); return; }
     _loading = new();
     _viewModel.PropertyChanged += OnChanged;
     _ = _viewModel.LoadAsync(_loading.Token);
